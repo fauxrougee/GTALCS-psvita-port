@@ -1,0 +1,5 @@
+# Host-side build and media tools, Python 3.10+.
+Pillow>=10,<13
+numpy>=1.26,<3
+lz4==4.4.5
+pyelftools>=0.31,<1

@@ -1,0 +1,267 @@
+# Traductions françaises des textes PC absents de FRENCH.GXT (version PS2).
+# Format : CLE<TAB>texte. Les clés absentes d'ici reprennent le texte anglais.
+# Majuscules sans accents (la police du jeu ne les gère pas en capitales).
+# !CLE remplace un texte déjà présent dans FRENCH.GXT.
+# FEC_LFA vaut « Caméra/Visée précise » dans la version PS2, mais le PC s'en sert pour la flèche gauche.
+!FEC_LFA	GAUCHE
+BULL	Lingots
+CVT_ERR	Espace disque insuffisant. Libérez de la place sur votre disque dur avant de continuer. Appuyez sur ECHAP pour annuler.
+CVT_MSG	Conversion des textures au format optimal pour votre carte graphique
+ELBURRO	Meilleur temps 'Turismo' en secondes
+FEA_2SP	2 haut-parleurs
+FEA_3DH	MATERIEL AUDIO :
+FEA_4SP	Plus de 2 haut-parleurs
+FEA_ADP	DETECTION AUTO DU MATERIEL
+FEA_EAR	Casque
+FEA_MPB	AMPLIFICATION MP3 :
+FEA_NAH	AUCUN MATERIEL AUDIO
+FEA_NM3	AUCUN FICHIER MP3 TROUVE
+FEA_SPK	CONFIGURATION DES ENCEINTES :
+FEC_360	MANETTE XBOX 360
+FEC_ACL	Accélérer
+FEC_ANS	Action
+FEC_BAC	Reculer
+FEC_BRK	Freiner
+FEC_CCM	Centrer la caméra derrière le joueur.
+FEC_CEN	Centrer la caméra
+FEC_CLE	Arme précédente
+FEC_CMM	Commandes communes
+FEC_CMP	COMBO : REGARD G+D
+FEC_CMR	Changer de caméra
+FEC_CMS	Changer le mode de caméra dans toutes les situations.
+FEC_CRD	Changer de station de radio
+FEC_CRI	Arme suivante
+FEC_DBG	MENU DEBUG
+FEC_DLF	Echec de la suppression.
+FEC_DWA	BAS
+FEC_EEX	Entrer+sortir
+FEC_ENT	Entrer/sortir du véhicule
+FEC_ERI	Erreur ! Une ou plusieurs actions ne sont associées à aucune touche. Vérifiez que toutes les actions sont assignées
+FEC_FIR	Tirer
+FEC_FOR	Avancer
+FEC_FPO	Armes à la 1re personne
+FEC_FPR	Commandes à la 1re personne
+FEC_FRC	CAMERA LIBRE :
+FEC_HBR	Frein à main
+FEC_HND	Frein à main
+FEC_HRN	Klaxon
+FEC_IVH	Inverser la souris horizontalement :
+FEC_IVP	INVERSER LA MANETTE VERTICALEMENT
+FEC_IVV	INVERSER LA SOURIS VERTICALEMENT :
+FEC_JDE	Manette détectée
+FEC_JMP	Sauter
+FEC_JOD	Détecter la manette
+FEC_JOY	Manette
+FEC_JPR	Appuyez sur un bouton de la manette que vous voulez utiliser dans le jeu pour la sélectionner.
+FEC_LBA	Regarder derrière
+FEC_LBC	Regard gauche + regard droite.
+FEC_LBH	Regarder derrière le véhicule
+FEC_LDN	1re personne : regarder en bas
+FEC_LDU	Regarder en bas
+FEC_LEF	Gauche
+FEC_LKL	1re personne : regarder à gauche
+FEC_LKT	Verrouiller la cible
+FEC_LLF	Regarder à gauche du véhicule
+FEC_LOL	Regarder à gauche
+FEC_LOR	Regarder à droite
+FEC_LRG	Regarder à droite du véhicule
+FEC_LRT	1re personne : regarder à droite
+FEC_LUD	Regarder en haut
+FEC_LUN	Echec du chargement. Fichier corrompu, veuillez le supprimer.
+FEC_LUP	1re personne : regarder en haut
+FEC_MOU	Réglages de la souris
+FEC_MSH	SENSIBILITE DE LA SOURIS :
+FEC_BSP	RET.ARR
+FEC_CLK	VERR.MAJ
+FEC_DLL	SUPPR
+FEC_END	FIN
+FEC_ETR	ENTREE
+FEC_HME	ORIGINE
+FEC_IRT	INSER
+FEC_JBO	BOUTON ~1~
+FEC_LAL	ALT G
+FEC_LCT	CTRL G
+FEC_LSF	MAJ G
+FEC_LWD	WIN G
+FEC_MXO	BX1
+FEC_MXT	BX2
+FEC_NLK	VERR.NUM
+FEC_PGD	PG.SUIV
+FEC_PGU	PG.PREC
+FEC_PSB	PAUSE
+FEC_RAL	ALT GR
+FEC_RCT	CTRL D
+FEC_RSF	MAJ D
+FEC_RTN	ENTREE
+FEC_RWD	WIN D
+FEC_SFT	MAJ
+FEC_SLK	ARRET DEFIL
+FEC_SPC	ESPACE
+FEC_STR	NUM *
+FEC_WRC	CLIC WIN
+FEC_MSL	BGS
+FEC_MSM	BMS
+FEC_MSR	BDS
+FEC_MWB	MOLETTE BAS
+FEC_MWF	MOLETTE HAUT
+FEC_NTR	Cible suivante
+FEC_NUS	NON UTILISE
+FEC_NWE	Arme suivante
+FEC_OJS	Un seul bouton de manette autorisé par action
+FEC_OKK	OK
+FEC_OMS	Un seul bouton de souris autorisé
+FEC_ONE	MANETTE XBOX ONE
+FEC_ORR	ou
+FEC_PAD	Manette
+FEC_PAS	Pause
+FEC_PED	Commandes à pied
+FEC_PFR	Tirer
+FEC_PJP	Sauter
+FEC_PLB	Regarder derrière.
+FEC_PSH	Tirer
+FEC_PSP	Sprinter
+FEC_PTL	Verrouillage + arme précédente.
+FEC_PTR	Verrouillage + arme suivante.
+FEC_PTT	Cible précédente
+FEC_PWE	Arme précédente
+FEC_PWF	Avancer
+FEC_PWL	Aller à gauche
+FEC_PWR	Aller à droite
+FEC_PWT	Marcher vers la caméra
+FEC_RAD	Radio
+FEC_RED	Redéfinir les commandes
+FEC_RFA	DROITE
+FEC_RIG	Droite
+FEC_SMS	Afficher le pointeur de la souris
+FEC_SPN	Sprinter
+FEC_SUB	Mission secondaire
+FEC_SVU	Echec de la sauvegarde.
+FEC_SZI	Fusil de précision : zoom avant
+FEC_SZO	Fusil de précision : zoom arrière
+FEC_TFD	Tourelle + pencher en bas
+FEC_TFL	Regard gauche + tourelle G
+FEC_TFR	Regard droite + tourelle D
+FEC_TFU	Tourelle + pencher en haut
+FEC_TLF	Cible suivante à gauche
+FEC_TRG	Cible suivante à droite
+FEC_TSM	Activer/désactiver missions secondaires
+FEC_TSS	Capture d'écran
+FEC_TWO	Deux touches de clavier maximum
+FEC_TYP	TYPE DE MANETTE
+FEC_UJS	Boutons de manette uniques uniquement.
+FEC_UMS	Boutons de souris uniques uniquement.
+FEC_UNB	NON ASSIGNE
+FEC_UPA	HAUT
+FEC_VEH	Commandes en véhicule
+FEC_WAR	Attention
+FEC_WPN	Tirer
+FEC_ZIN	Zoom avant
+FEC_ZOT	Zoom arrière
+FED_AAS	ANTICRENELAGE :
+FED_BIL	BILINEAIRE
+FED_CLF	FILTRE DE COULEUR :
+FED_FIL	FILTRAGE DES TEXTURES :
+FED_FLS	PLEIN ECRAN
+FED_MBL	FLOU CINETIQUE :
+FED_MIP	MIP MAPPING :
+FED_PRM	CONTOUR LUMINEUX PERSOS :
+FED_RES	RESOLUTION :
+FED_RGL	REFLETS DE LA ROUTE :
+FED_TRA	TRAINEES :
+FED_TRL	TRILINEAIRE
+FED_VPL	PIPELINE VEHICULES :
+FED_WLM	LIGHTMAPS DU MONDE :
+FED_WND	FENETRE
+FEF_DI2	Réglez le jeu pour votre écran
+FEF_SA1	Gardez votre place !
+FEH_MPH	SOURIS, FLECHES POUR BOUGER - PG.PREC, PG.SUIV, MOLETTE POUR ZOOMER, L - LEGENDE
+FEH_NA	OPTION NON DISPONIBLE
+FEH_SSA	FLECHES POUR BOUGER - S POUR ENREGISTRER
+FEH_VMP	VOIR LA CARTE
+FEL_JAP	JAPONAIS
+FEL_POL	POLONAIS
+FEL_RUS	RUSSE
+FEM_2PR	TEST ALPHA PS2 :
+FEM_AUT	AUTO
+FEM_CAR	DENSITE DES VEHICULES
+FEM_CSB	BANDES NOIRES CINEMATIQUES :
+FEM_FRM	LIMITEUR D'IMAGES :
+FEM_HIG	ELEVE
+FEM_ISL	MEMOIRE DE LA CARTE :
+FEM_LOD	DISTANCE D'AFFICHAGE :
+FEM_LOW	BAS
+FEM_MED	MOYEN
+FEM_MM	MENU PRINCIPAL
+FEM_MOB	MOBILE
+FEM_NON	AUCUN
+FEM_NRM	NORMAL
+FEM_PED	DENSITE DES PIETONS
+FEM_PS2	PS2
+FEM_SCF	FORMAT D'ECRAN :
+FEM_SIM	SIMPLE
+FEM_VSC	SYNCHRO VERTICALE :
+FEM_XBX	XBOX
+FEN_STA	NOUVELLE PARTIE
+FEP_OPT	Options
+FEP_QUI	Quitter le jeu
+FEP_RES	Reprendre
+FEP_STG	Nouvelle partie
+FEQ_SRE	Voulez-vous vraiment quitter ? Toute progression depuis la dernière sauvegarde sera perdue. Continuer ?
+FEQ_SRW	Voulez-vous vraiment quitter le jeu ?
+FESZ_RM	REESSAYER ?
+FES_CMI	DERNIERE MISSION REUSSIE
+FES_CSA	Choisissez un skin dans la liste ci-dessous :
+FES_DAT	DATE
+FES_LCG	Charger la partie et continuer à jouer ?
+FES_SET	Utiliser le skin
+FES_SKN	NOM DU SKIN
+FET_AGS	Réglages de la manette
+FET_APP	APPLIQUER
+FET_CAC	ACTION
+FET_CCR	EN VEHICULE
+FET_CFT	A PIED
+FET_CIG	RETOUR ARRIERE POUR EFFACER - CLIC G, ENTREE POUR MODIFIER
+FET_CTI	Commandes classiques
+FET_CTL	CONFIGURATION DES COMMANDES
+FET_DAM	MODELISATION ACOUSTIQUE DYNAMIQUE :
+FET_DEF	Paramètres par défaut
+FET_EIG	IMPOSSIBLE D'ASSIGNER UNE COMMANDE A CETTE ACTION
+FET_GFX	Réglages graphiques
+FET_HRD	PARAMETRES PAR DEFAUT RESTAURES
+FET_MIG	GAUCHE, DROITE, MOLETTE POUR REGLER
+FET_MST	DIRECTION A LA SOURIS :
+FET_OPT	Options
+FET_PAU	MENU PAUSE
+FET_PS	Skin du joueur
+FET_QG	QUITTER LE JEU
+FET_RIG	CHOISISSEZ UNE NOUVELLE COMMANDE POUR CETTE ACTION
+FET_RMS	REJOUER LA MISSION
+FET_RSC	MATERIEL NON DISPONIBLE - PARAMETRE D'ORIGINE RESTAURE
+FET_RSO	PARAMETRE D'ORIGINE RESTAURE
+FET_STI	Commandes standard
+FET_STS	STATS ENREGISTREES DANS 'STATS.HTML' + 'STATS.TXT'
+FTFRENZ	Frénésie du camion de pompiers
+GMSTOR	Magasin
+HEY3	~w~Tu as laissé ton pote en plan, retourne chercher 8-Ball !
+HEY6	~w~Tu as abandonné le Kanbu yakuza. Tu dois le protéger !
+HJUP	Santé au décollage : ~1~
+LG_36	Sun Yard
+MC_01	Scènes de MOCAP
+MC_02	Impossible d'utiliser le sélecteur de cinématiques pendant une mission.
+MC_03	~g~nom de la scène - nom du script~w~
+MC_04	Choisissez la scène voulue et appuyez sur CROIX. Appuyez sur TRIANGLE pour quitter.
+MODTIT	Changement de la vitesse du monde
+MODWOR	Modifier la vitesse du monde
+NO_PCCD	Insérez le CD de GTA Liberty City Stories ou appuyez sur ECHAP pour annuler
+PANCAK	APLATI !
+PCRESRT	Nouvelle partie en cours. Veuillez patienter...
+REPLAY	REJOUER
+SOAKED	TREMPE !
+SPLAT	SPLAT !
+ST_FASH	Budget mode
+ST_STOR	Magasins braqués
+TRRACE4	~w~Tu as atteint ~1~ points de passage sur ~1~ en premier.
+WEATHER	FORCER LA METEO
+WIN_95	Grand Theft Auto LCS ne fonctionne pas sous Windows 95
+WIN_DX	Grand Theft Auto LCS nécessite au moins DirectX 8.1
+WIN_VDM	Grand Theft Auto LCS ne trouve pas assez de mémoire vidéo disponible

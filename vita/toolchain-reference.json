@@ -1,0 +1,20 @@
+{
+  "description": "Reference libraries used by the confirmed 01.13 and intro release build. Diagnostic hashes, not redistribution.",
+  "compiler": "15.2.0",
+  "host_sdk_archive": "vitasdk-x86_64-w64-mingw32-2026-09-26_08-49-25.tar.bz2",
+  "host_sdk_archive_sha256": "0d32ac3f8c91f98e964457365e9857ee8f9f244cc7ea3faf53c65607cd1261eb",
+  "target_library_sha256": {
+    "libvitaGL.a": "2b7d19510b72fe8e68d32450f247aaf7dc4eedd457ce0850b0dcc351a2ea94f4",
+    "libopenal.a": "3a6949d74033e80c351fe7d64a119d5ae08136b4ade5b9a7e71e2205363ad5a3",
+    "libmpg123.a": "c747d7cac9fbc71c6ccd0095d37998fd53ff445c5b1ad1d12c13f4e730098d10",
+    "libvitashark.a": "ad5ba9176cb81074cf0f8b373fc75abf79c05cf1ad1553a209f42ccfb94169b4",
+    "libSceShaccCgExt.a": "42448da6ebfdc679458702492da467481b3dbcacfd2c254b28f08dba539d2a4a",
+    "libmathneon.a": "863f9e1f24f2ceee651336158a5b755f1791cc8b1dbcb5f94de4b4abfa8c1180",
+    "libtaihen_stub.a": "c499972c901d64a7cb247263142e17441a32ff2d20193340b62c404053147d57",
+    "libkubridge_stub.a": "ceb4e0c5fff076455d7e6015d6653248b7311314be2c91e1966a1e665997bf67",
+    "libz.a": "ec823d1db2c1e01572396ae6843b181ee60c9f20ca4992e571ee16771231e97f",
+    "libpthread.a": "207c1848aaa3b0a47443299ed6aecc0196d3402de6c496013c5880bfe679325b",
+    "libstdc++.a": "94818d61ebced52e20b308c9017a6b44d8f4398b19f0d586d510ce4b83cd86d5",
+    "libc.a": "c7d82130310a81b16444715d6cd884f49bb92d2c8b0494634da90a2411b10d61"
+  }
+}

@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.png binary
+*.mp4 binary
+*.exe binary
+sdk/** linguist-vendored
+vendor/** linguist-vendored
+*.sh text eol=lf
+*.patch text eol=lf
+*.patch -whitespace

@@ -1,0 +1,182 @@
+diff --git a/src/gl/gl3device.cpp b/src/gl/gl3device.cpp
+index adf2398..e5b78fa 100644
+--- a/src/gl/gl3device.cpp
++++ b/src/gl/gl3device.cpp
+@@ -1843,6 +1843,17 @@ initOpenGL(void)
+ 
+ 	resetRenderState();
+ 
++#ifdef PSP2
++	// Meshes without prelight colours (peds, most vehicles) or normals leave
++	// these attributes disabled and rely on the GL defaults. vitaGL reads them
++	// from uninitialised memory instead of (0,0,0,1): set the defaults.
++	glVertexAttrib4f(ATTRIB_NORMAL, 0.0f, 0.0f, 0.0f, 0.0f);
++	glVertexAttrib4f(ATTRIB_COLOR, 0.0f, 0.0f, 0.0f, 1.0f);
++	glVertexAttrib4f(ATTRIB_WEIGHTS, 1.0f, 0.0f, 0.0f, 0.0f);
++	glVertexAttrib4f(ATTRIB_INDICES, 0.0f, 0.0f, 0.0f, 0.0f);
++	glVertexAttrib4f(ATTRIB_TEXCOORDS1, 0.0f, 0.0f, 0.0f, 1.0f);
++#endif
++
+ 	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAnisotropy);
+ 
+ 	if(gl3Caps.glversion >= 30){
+diff --git a/src/gl/gl3immed.cpp b/src/gl/gl3immed.cpp
+index b66b7e5..dd08851 100644
+--- a/src/gl/gl3immed.cpp
++++ b/src/gl/gl3immed.cpp
+@@ -30,6 +30,22 @@ static int32 u_xform;
+ #define STARTINDICES 10000
+ #define STARTVERTICES 10000
+ 
++// Streams `size` bytes of immediate geometry into the bound buffer, whose
++// normal size is `bufSize`.
++static void
++uploadStreamData(GLenum target, uint32 bufSize, const void *data, uint32 size)
++{
++#ifdef PSP2
++	// vitaGL allocates a new store on every glBufferData and frees the old one
++	// ~3 frames later, so orphaning the full buffer on each immediate draw ran
++	// it out of memory (then it sleeps 1s per allocation). Upload what's drawn.
++	glBufferData(target, size, data, GL_STREAM_DRAW);
++#else
++	glBufferData(target, bufSize, nil, GL_STREAM_DRAW);
++	glBufferSubData(target, 0, size, data);
++#endif
++}
++
+ static Shader *im2dShader;
+ static AttribDesc im2dattribDesc[3] = {
+ 	{ ATTRIB_POS,        GL_FLOAT,         GL_FALSE, 4,
+@@ -133,8 +149,7 @@ im2DRenderPrimitive(PrimitiveType primType, void *vertices, int32 numVertices)
+ #endif
+ 
+ 	glBindBuffer(GL_ARRAY_BUFFER, im2DVbo);
+-	glBufferData(GL_ARRAY_BUFFER, STARTVERTICES*sizeof(Im2DVertex), nil, GL_STREAM_DRAW);
+-	glBufferSubData(GL_ARRAY_BUFFER, 0, numVertices*sizeof(Im2DVertex), vertices);
++	uploadStreamData(GL_ARRAY_BUFFER, STARTVERTICES*sizeof(Im2DVertex), vertices, numVertices*sizeof(Im2DVertex));
+ 
+ 	if(im2dOverrideShader)
+ 		im2dOverrideShader->use();
+@@ -163,12 +178,10 @@ im2DRenderIndexedPrimitive(PrimitiveType primType,
+ #endif
+ 
+ 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, im2DIbo);
+-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, STARTINDICES*2, nil, GL_STREAM_DRAW);
+-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, numIndices*2, indices);
++	uploadStreamData(GL_ELEMENT_ARRAY_BUFFER, STARTINDICES*2, indices, numIndices*2);
+ 
+ 	glBindBuffer(GL_ARRAY_BUFFER, im2DVbo);
+-	glBufferData(GL_ARRAY_BUFFER, STARTVERTICES*sizeof(Im2DVertex), nil, GL_STREAM_DRAW);
+-	glBufferSubData(GL_ARRAY_BUFFER, 0, numVertices*sizeof(Im2DVertex), vertices);
++	uploadStreamData(GL_ARRAY_BUFFER, STARTVERTICES*sizeof(Im2DVertex), vertices, numVertices*sizeof(Im2DVertex));
+ 
+ 	if(im2dOverrideShader)
+ 		im2dOverrideShader->use();
+@@ -274,8 +287,7 @@ im3DTransform(void *vertices, int32 numVertices, Matrix *world, uint32 flags)
+ #endif
+ 
+ 	glBindBuffer(GL_ARRAY_BUFFER, im3DVbo);
+-	glBufferData(GL_ARRAY_BUFFER, STARTVERTICES*sizeof(Im3DVertex), nil, GL_STREAM_DRAW);
+-	glBufferSubData(GL_ARRAY_BUFFER, 0, numVertices*sizeof(Im3DVertex), vertices);
++	uploadStreamData(GL_ARRAY_BUFFER, STARTVERTICES*sizeof(Im3DVertex), vertices, numVertices*sizeof(Im3DVertex));
+ #ifndef RW_GL_USE_VAOS
+ 	setAttribPointers(im3dattribDesc, 4);
+ #endif
+@@ -295,8 +307,7 @@ void
+ im3DRenderIndexedPrimitive(PrimitiveType primType, void *indices, int32 numIndices)
+ {
+ 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, im3DIbo);
+-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, STARTINDICES*2, nil, GL_STREAM_DRAW);
+-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, numIndices*2, indices);
++	uploadStreamData(GL_ELEMENT_ARRAY_BUFFER, STARTINDICES*2, indices, numIndices*2);
+ 
+ 	flushCache();
+ 	glDrawElements(primTypeMap[primType], numIndices,
+diff --git a/src/gl/gl3shader.cpp b/src/gl/gl3shader.cpp
+index f361dc8..c25575d 100644
+--- a/src/gl/gl3shader.cpp
++++ b/src/gl/gl3shader.cpp
+@@ -12,6 +12,9 @@
+ #ifdef RW_OPENGL
+ #include "rwgl3.h"
+ #include "rwgl3shader.h"
++#ifdef PSP2
++#include "vita_shader_cache.h"
++#endif
+ 
+ namespace rw {
+ namespace gl3 {
+@@ -123,12 +126,17 @@ setUniform(int32 id, void *data)
+ void
+ flushUniforms(void)
+ {
++#ifdef PSP2
++	for(int active = 0; active < currentShader->numActiveUniforms; active++){
++		int i = currentShader->activeUniforms[active];
++#else
+ 	for(int i = 0; i < uniformRegistry.numUniforms; i++){
+ 		// this is bad!
+ 		if(i >= currentShader->numUniforms){
+ 			printf("trying to set uniform %d %s that doesn't exist!\n", i, uniformRegistry.uniforms[i].name);
+ 			continue;
+ 		}
++#endif
+ 
+ 		int32 loc = currentShader->uniformLocations[i];
+ 		if(loc == -1)
+@@ -250,6 +258,9 @@ Shader::create(const char **vsrc, const char **fsrc)
+ 	int i;
+ 	int fail;
+ 
++#ifdef PSP2
++	if(!VitaLoadShaderProgram(vsrc,fsrc,&program)) {
++#endif
+ 	fail = compileshader(GL_VERTEX_SHADER, vsrc, &vs);
+ 	if(fail)
+ 		return nil;
+@@ -267,6 +278,10 @@ Shader::create(const char **vsrc, const char **fsrc)
+ 	if(fail){
+ 		return nil;
+ 	}
++#ifdef PSP2
++	VitaSaveShaderProgram(vsrc,fsrc,program);
++	}
++#endif
+ 
+ 	Shader *sh = rwNewT(Shader, 1, MEMDUR_EVENT | ID_DRIVER);	 // or global?
+ 
+@@ -310,10 +325,17 @@ Shader::create(const char **vsrc, const char **fsrc)
+ 	sh->numUniforms = uniformRegistry.numUniforms;
+ 	sh->uniformLocations = rwNewT(GLint, uniformRegistry.numUniforms, MEMDUR_EVENT | ID_DRIVER);
+ 	sh->serialNums = rwNewT(uint32, uniformRegistry.numUniforms, MEMDUR_EVENT | ID_DRIVER);
++#ifdef PSP2
++	sh->numActiveUniforms = 0;
++#endif
+ 	for(i = 0; i < uniformRegistry.numUniforms; i++){
+ 		sh->uniformLocations[i] = glGetUniformLocation(program,
+ 			uniformRegistry.uniforms[i].name);
+ 		sh->serialNums[i] = ~0;	// let's hope this means dirty
++#ifdef PSP2
++		if(sh->uniformLocations[i] != -1 && uniformRegistry.uniforms[i].type != UNIFORM_NA)
++			sh->activeUniforms[sh->numActiveUniforms++] = i;
++#endif
+ 	}
+ 
+ 	// set samplers
+diff --git a/src/gl/rwgl3shader.h b/src/gl/rwgl3shader.h
+index 890f12b..a057342 100644
+--- a/src/gl/rwgl3shader.h
++++ b/src/gl/rwgl3shader.h
+@@ -53,6 +53,12 @@ struct Shader
+ 	GLint *uniformLocations;
+ 	uint32 *serialNums;
+ 	int32 numUniforms;	// just to be sure!
++#ifdef PSP2
++	// Fixed at link time: inactive and caller-managed uniforms need no scan
++	// for every mesh. Indices still refer to the common uniform registry.
++	uint8 numActiveUniforms;
++	uint8 activeUniforms[MAX_UNIFORMS];
++#endif
+ 
+ 	static Shader *create(const char **vsrc, const char **fsrc);
+ //	static Shader *fromFiles(const char *vs, const char *fs);
