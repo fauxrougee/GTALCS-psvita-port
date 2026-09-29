@@ -1,19 +1,11 @@
-# Version 01.15 validation
+# 01.15 test notes
 
-Version 01.15 removes the FPS/CPU/RAM overlay. Its drawing function, call,
-and declaration are removed. Measurements used by diagnostic reports
-remain active.
+This update removes the FPS/CPU/RAM overlay. Diagnostic logging stays enabled.
 
-Local checks using native Windows tools:
+- Native Windows build and VPK packaging: passed.
+- Overlay drawing function: absent from the linked game.
+- Performance sampling functions: still present.
+- Intro player, video/audio, loading image, icon, and LiveArea: SHA-256 matches with 01.14.
+- Package version, extended memory attribute, ZIP contents, and ELF segments: passed.
 
-- The game builds and the VPK with the full intro is created successfully.
-- The overlay drawing function is absent from the compiled game's symbols;
-  measurement collection functions are still present.
-- The intro player, video with audio, loading screen, icon, and LiveArea
-  are identical to 01.14, verified by SHA-256 hashes of the packaged files.
-- Build tools verify the 01.15 metadata, extended memory, VPK contents,
-  ZIP CRCs, and ELF segments.
-
-The [full intro checks performed for 01.14](VALIDATION-01.14.md) still apply
-to these unchanged files. No new test on a physical PS Vita was performed
-while making this change.
+The intro files are unchanged, so the [01.14 playback checks](VALIDATION-01.14.md) still apply. No new physical-console test was performed for this update.

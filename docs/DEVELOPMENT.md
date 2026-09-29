@@ -1,70 +1,54 @@
-# Testing, source exports, and publishing
+# Tests and release tools
 
-## Pre-release checks
+Set up the [build environment](../vita/README.md) first. The commands below use `python`; substitute the interpreter from your virtual environment.
+
+## Engine checks
 
 ```sh
 python tools/vita/check-perf-hooks.py
 python tools/vita/check-perf-stats.py
 python tools/vita/check-render-cache.py
 python tools/vita/check-async-log.py
+```
+
+These check frame accounting, rendering values, and the asynchronous logger. Host tests need GCC with ASan/UBSan on Linux, or MSVC x64 with AddressSanitizer on Windows. MSVC 14.44 was used for the local checks. Set `VITA_TEST_VCVARS` or `VITA_TEST_MSVC_VERSION` to select another installation.
+
+## Intro checks
+
+Build with the intro first, then run:
+
+```sh
 python tools/vita/build.py
 python tools/vita/check-software-movie.py
 python tools/vita/check-software-playback.py
 ```
 
-Host tests use GCC with ASan/UBSan on Linux, or MSVC with ASan on Windows.
-On Windows, install the x64 C++ tools and AddressSanitizer (locally validated
-with MSVC 14.44). `VITA_TEST_VCVARS` and `VITA_TEST_MSVC_VERSION` allow you
-to select a different installation. These tools do not build the ARM game.
-
-The player tests check video frames, audio, malformed files, the video queue,
-and the transition to the game. Vita system calls are mocked; these tests
-do not replace testing on a console. The full playback test takes about
-111 seconds, matching the video duration.
+The reader test checks the frames, PCM audio, seeking, and malformed files. The playback test exercises the player with mocked Vita calls, including skipping and handing off to the game. The full playback run takes about 111 seconds.
 
 To test the ARM decoder linked into the release:
 
 ```sh
 python -m pip install unicorn
 python tools/vita/check-movie-arm.py --limit 16
-# Omit --limit to check every frame; this takes longer.
 ```
 
-Measure FPS on the Vita; host tests do not predict device performance.
-The gameplay log is overwritten on each launch. Keep `intro.log` when
-investigating player issues, along with the exact ELF files for the installed VPK.
+Leave off `--limit` to check all 2,774 frames. These tests do not measure performance on a Vita; use a console for FPS comparisons.
 
-## Exporting sources
+## Package and export
+
+`build.py` checks the VPK contents and ELF layout before copying outputs to `dist/`. Keep the VPK, ELF files, and checksums together so crash reports can be matched to the right build.
+
+To export a source ZIP:
 
 ```sh
 python tools/vita/export-source.py
 ```
 
-The archive in `dist/` contains the current sources, notices, dependencies
-at their recorded revisions, and the edited video. The full Vita patch is
-included and applied to librw by CMake. SDK files, old VPKs, crash dumps,
-logs, save files, gameplay data, and personal paths are excluded.
-The archive can be extracted into a new directory and built with an installed
-SDK, without access to the original workspace.
+The ZIP includes the dependencies and edited MP4. Game data, the SDK, logs, dumps, and build outputs stay out of the archive. Extract it into a clean directory when checking that a release builds from source.
 
-When publishing an upstream Git checkout, retain its submodules and the patch.
-This repository and exported source archives already include the dependencies.
-No `.git` metadata is included in the ZIP. Do not add `assets/`, `sdk/`,
-`build/`, `dist/`, or `.local/` to the source repository.
+Upload VPKs to GitHub Releases. Keep `assets/`, `sdk/`, `build/`, `dist/`, and `.local/` out of commits. The workflows upload artifacts; they do not publish releases automatically.
 
-To publish an extracted archive as a new Git repository, create an empty
-repository on GitHub, then run the following in the extracted directory.
-Replace the example URL with your repository's URL:
+## Recorded checks
 
-```sh
-git init -b main
-git add .
-git commit -m "Prepare reLCS PS Vita 01.15 with full intro"
-git remote add origin https://github.com/YOUR-ACCOUNT/YOUR-REPOSITORY.git
-git push -u origin main
-```
-
-The edited MP4 is approximately 11 MB and is tracked directly by Git, without
-LFS. Only the MP4 is versioned, not the large generated VTM. VPKs and symbols
-belong in **Releases**, not in source history. The workflows produce build
-artifacts without automatically publishing releases or tags.
+- [01.15: removal of the performance overlay](VALIDATION-01.15.md)
+- [01.14: full intro and source build](VALIDATION-01.14.md)

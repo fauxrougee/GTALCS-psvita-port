@@ -1,4 +1,15 @@
-# Building for PS Vita
+# Build from source
+
+Looking to install the game? Use the [installation guide](../README.md#install). You only need the instructions below if you want to compile the port.
+
+## Get the source
+
+```sh
+git clone https://github.com/fauxrougee/GTALCS-psvita-port.git
+cd GTALCS-psvita-port
+```
+
+Dependencies are included in `vendor/`. CMake applies `vita/librw-psp2.patch` before building.
 
 ## Prerequisites
 
@@ -9,11 +20,6 @@ Install these target libraries with the official vdpm package manager:
 ```text
 zlib taihen kubridge libmathneon vitaShaRK SceShaccCgExt vitaGL openal-soft mpg123
 ```
-
-The locally validated build uses GCC 15.2.0, the Windows SDK tools dated
-2026-09-26, and the target libraries used by the hardware-tested 01.13 release.
-Their hashes are recorded in `toolchain-reference.json` for diagnostics.
-The SDK and Sony system modules are not distributed here.
 
 ## Native Windows
 
@@ -46,30 +52,25 @@ python3 -m venv .venv
 .venv/bin/python tools/vita/build.py --jobs 4
 ```
 
-`tools/vita/install-vitasdk.sh` can set up a separate SDK on Linux. It does
-not delete existing directories or change shell profiles. The setup scripts
-do not support WSL 1.
+`tools/vita/install-vitasdk.sh` can handle SDK setup on Linux. WSL 1 is not
+supported; use the native Windows tools instead.
 
-## Options and outputs
+## Build options
+
+Use the Python from your virtual environment when running these commands:
 
 ```sh
 python tools/vita/build.py --no-intro
 python tools/vita/build.py --sdk /path/to/sdk --build-dir /path/to/build --output-dir /path/to/dist --jobs 4
 ```
 
-By default, `build/vita-intro/` contains the game, intro player, their SELF
-executables, and the prepared video. `dist/reLCS-01.15-intro-complete.vpk` contains:
+The full build writes `dist/reLCS-01.15-intro-complete.vpk`.
+`--no-intro` produces the smaller `dist/reLCS-01.15-no-intro.vpk` for testing.
+Both builds also export ELF files and checksums. Keep the ELF files matching
+the installed VPK when investigating a crash dump.
 
-- `eboot.bin`: intro player built from `vita/launcher/`;
-- `game.bin`: engine built from the current sources;
-- `boot/intro.vtm`: all video frames and PCM audio;
-- the loading screen, icon, LiveArea, and LZ4 license.
-
-`--no-intro` builds in `build/vita-no-intro/` and produces a small VPK.
-Both variants use the same engine sources. Keep the ELF files matching the
-installed VPK when investigating a crash dump.
-
-You can also use CMake directly:
+<details>
+<summary>Using CMake directly</summary>
 
 ```sh
 cmake -S vita -B build/vita-intro -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -81,12 +82,19 @@ CMake must find the Python interpreter with the required packages. Set
 once before compilation. Incompatible changes to the dependency produce
 an explicit error.
 
-## Video
+</details>
 
-The supplied MP4 is already edited: no Windows fonts or original source video
-are required. `pack-boot-movie.py` decodes all 2,774 frames and the audio, then
-compresses them without additional quality loss. The approximately 187 MB VTM
-is generated in the build directory and excluded from Git.
+## Intro video
 
-Packaging verifies the executables, extended memory attribute, artwork, and
-video. See the [testing guide](../docs/DEVELOPMENT.md).
+The full intro is included by default. The source is `vita/boot/intro.mp4`;
+`pack-boot-movie.py` converts its 2,774 frames and audio to the playback
+format without further quality loss. The generated VTM is roughly 187 MB
+and stays in the build directory.
+
+## Toolchain reference
+
+The local 01.15 build used GCC 15.2.0, the Windows SDK tools from September 26,
+2026, and the target libraries used for 01.13. Library hashes are in
+[toolchain-reference.json](toolchain-reference.json).
+
+See [DEVELOPMENT.md](../docs/DEVELOPMENT.md) for tests and source exports.

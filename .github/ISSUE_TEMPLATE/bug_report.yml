@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a crash, installation problem, or gameplay bug.
+body:
+  - type: markdown
+    attributes:
+      value: "Check the [installation guide](https://github.com/fauxrougee/GTALCS-psvita-port#install) first, then tell us what went wrong."
+  - type: input
+    id: version
+    attributes:
+      label: Port version
+      placeholder: "01.15, or a commit if you built it yourself"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Vita model and system version
+      placeholder: "For example, Vita 2000 on 3.65"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can we reproduce it?
+      description: Include the mission or location, and whether it happens every time.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or crash dump
+      description: "Attach log.txt from ux0:data/reLCS/, or intro.log for intro issues. Copy them before launching again. You can also attach a .psp2dmp. Do not upload game data."

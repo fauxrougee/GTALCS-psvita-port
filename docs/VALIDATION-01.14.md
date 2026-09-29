@@ -1,31 +1,19 @@
-# Version 01.14 validation
+# 01.14 test notes
 
-Local validation performed on September 29, 2026, using native Windows tools.
+Recorded September 29, 2026, using native Windows tools. The release restored the full intro while keeping the engine behavior from 01.13.
 
-- The engine retains the behavior of version 01.13, which was tested on a
-  console. Preparing this release changes the build, distribution, and
-  documentation; only comment references change in the engine sources.
-- The game and intro player are built from source. A second full build
-  succeeds from the exported archive in a fresh directory containing spaces,
-  without a Git repository, old VPK, or old executable.
-- The `--no-intro` option builds a direct-launch package; switching back to
-  the full intro build is also verified.
-- The container regenerated from the included MP4 is byte-for-byte identical
-  to the previously working full intro: 2,774 frames and 5,326,080 stereo
-  samples, approximately 111 seconds.
-- The host reader checks every frame and all PCM audio, video seeking, the
-  concurrent queue, and rejection of malformed files.
-- The ARM functions actually linked into the player run under Unicorn for
-  all 2,774 frames: CRC, LZ4 decompression, colors, and buffer bounds pass.
-- Full playback simulation and skip, audio/video failure, synchronization,
-  and missing-video scenarios pass. Vita system calls are mocked; any frames
-  that become too old according to the host clock are counted separately.
-- Performance accounting, rendering value preservation, and asynchronous
-  logging tests pass with AddressSanitizer.
-- The VPK passes checks for ZIP CRCs, executable and media hashes, metadata,
-  extended memory, icon, and LiveArea. ARM ELF load segments do not overlap
-  in either the game or the intro player.
+| Check | Result |
+| --- | --- |
+| Build from the source ZIP in a fresh directory, including a path with spaces | Passed |
+| Build without the intro, then switch back to the full build | Passed |
+| Regenerate the video container from the included MP4 | Byte-for-byte match with the working intro |
+| Decode 2,774 frames and 5,326,080 stereo audio samples | Passed |
+| Seeking, concurrent queue, and rejection of malformed files | Passed |
+| Linked ARM CRC, LZ4, and color conversion code under Unicorn, all frames | Passed |
+| Full playback, skipping, audio/video failures, and missing-video handling | Passed with mocked Vita calls |
+| Frame accounting, rendering values, and asynchronous logging | Passed with AddressSanitizer |
+| VPK contents, metadata, memory attribute, artwork, ZIP CRCs, and ELF load segments | Passed |
 
-These checks do not measure FPS on a console. The 01.14 VPK still needed
-testing on a physical PS Vita at the time of this validation. The supplied
-GitHub Actions workflow was not run on GitHub during these local checks.
+Playback tests count frames dropped because of host timing separately. They do not measure Vita FPS.
+
+The 01.14 VPK had not been tested on a physical console at the time of these checks. GitHub Actions was not part of this local validation.
