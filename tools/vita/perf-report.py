@@ -23,22 +23,22 @@ GLCALL = re.compile(r'^\[VITA\]   (gl\S+)\s+([\d.]+|-) ms/frame\s+([\d.]+) calls
 HELD = re.compile(r'held_1/2/3/4\+=(\d+)/(\d+)/(\d+)/(\d+)')
 
 CATEGORIES = [
-    ('EndOfFrame', 'synchronisation: swap (file d\'affichage / GPU)'),
-    ('Streaming::LoadAll', 'stockage: chargement synchrone'),
-    ('Streaming::Convert', 'streaming: décodage et création GPU (CPU)'),
+    ('EndOfFrame', 'synchronization: swap (display queue / GPU)'),
+    ('Streaming::LoadAll', 'storage: synchronous loading'),
+    ('Streaming::Convert', 'streaming: decoding and GPU resource creation (CPU)'),
     ('Streaming::', 'streaming (CPU)'),
     ('TheScripts', 'CPU simulation: scripts'),
     ('Population', 'CPU simulation: population'),
     ('World.Anim', 'CPU simulation: animations'),
-    ('World.Control', 'CPU simulation: contrôle/physique/IA'),
+    ('World.Control', 'CPU simulation: control/physics/AI'),
     ('World.Collision', 'CPU simulation: collisions'),
-    ('World::', 'CPU simulation: monde (autres)'),
-    ('CutsceneMgr', 'CPU simulation: cinématiques'),
-    ('CGame::Process', 'CPU simulation (autres)'),
-    ('DMAudio', 'audio (thread principal)'),
-    ('CnstrRenderList', 'CPU préparation du rendu'),
-    ('PreRender', 'CPU préparation du rendu'),
-    ('', 'soumission GL (CPU, inclut les attentes vitaGL)'),
+    ('World::', 'CPU simulation: world (other)'),
+    ('CutsceneMgr', 'CPU simulation: cutscenes'),
+    ('CGame::Process', 'CPU simulation (other)'),
+    ('DMAudio', 'audio (main thread)'),
+    ('CnstrRenderList', 'CPU render preparation'),
+    ('PreRender', 'CPU render preparation'),
+    ('', 'GL submission (CPU, includes vitaGL waits)'),
 ]
 
 def category(name):
@@ -135,7 +135,7 @@ def aggregate(windows):
 def top_costs(r, count=3):
     costs = [(t, name, category(name)) for name, t in r['selfs'].items()]
     if r['wait']:
-        costs.append((r['wait'], '(attente entre images)', 'limiteur / boucle principale'))
+        costs.append((r['wait'], '(wait between frames)', 'limiter / main loop'))
     # CdStreamSync already belongs to the timed section that called it. Show
     # it separately, not as an additional exclusive cost in the ranking.
     return sorted(costs, reverse=True)[:count]

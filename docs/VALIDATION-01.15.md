@@ -1,19 +1,19 @@
-# Vérification de la 01.15
+# Version 01.15 validation
 
-La 01.15 retire le panneau FPS/CPU/RAM de l'écran. La fonction de dessin,
-son appel et sa déclaration sont supprimés. Les mesures nécessaires aux
-rapports de diagnostic restent actives.
+Version 01.15 removes the FPS/CPU/RAM overlay. Its drawing function, call,
+and declaration are removed. Measurements used by diagnostic reports
+remain active.
 
-Vérifications locales avec les outils Windows natifs :
+Local checks using native Windows tools:
 
-- Compilation du jeu et création du VPK avec l'intro complète réussies.
-- Fonction d'affichage absente des symboles du jeu compilé ; fonctions de
-  collecte des mesures toujours présentes.
-- Lecteur d'intro, vidéo avec son, écran de chargement, icône et LiveArea
-  identiques à ceux de la 01.14, par comparaison SHA-256 des fichiers empaquetés.
-- Métadonnées 01.15, mémoire étendue, contenu du VPK, CRC ZIP et segments
-  des ELF vérifiés par les outils de compilation.
+- The game builds and the VPK with the full intro is created successfully.
+- The overlay drawing function is absent from the compiled game's symbols;
+  measurement collection functions are still present.
+- The intro player, video with audio, loading screen, icon, and LiveArea
+  are identical to 01.14, verified by SHA-256 hashes of the packaged files.
+- Build tools verify the 01.15 metadata, extended memory, VPK contents,
+  ZIP CRCs, and ELF segments.
 
-Les [vérifications complètes de l'intro en 01.14](VALIDATION-01.14.md)
-restent applicables à ces fichiers inchangés. Aucun nouvel essai sur une
-PS Vita physique n'a été effectué pendant cette modification.
+The [full intro checks performed for 01.14](VALIDATION-01.14.md) still apply
+to these unchanged files. No new test on a physical PS Vita was performed
+while making this change.

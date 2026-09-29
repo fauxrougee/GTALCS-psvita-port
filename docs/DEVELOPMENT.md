@@ -1,6 +1,6 @@
-# Tests, sources et publication
+# Testing, source exports, and publishing
 
-## Vérifications avant une release
+## Pre-release checks
 
 ```sh
 python tools/vita/check-perf-hooks.py
@@ -12,59 +12,59 @@ python tools/vita/check-software-movie.py
 python tools/vita/check-software-playback.py
 ```
 
-Les tests hôtes utilisent GCC avec ASan/UBSan sur Linux, ou MSVC avec ASan
-sur Windows. Sur Windows, installer les outils C++ x64 et AddressSanitizer
-(validation locale : MSVC 14.44). `VITA_TEST_VCVARS` et
-`VITA_TEST_MSVC_VERSION` permettent de choisir une autre installation.
-Ils ne servent pas à compiler le jeu ARM.
+Host tests use GCC with ASan/UBSan on Linux, or MSVC with ASan on Windows.
+On Windows, install the x64 C++ tools and AddressSanitizer (locally validated
+with MSVC 14.44). `VITA_TEST_VCVARS` and `VITA_TEST_MSVC_VERSION` allow you
+to select a different installation. These tools do not build the ARM game.
 
-Les tests du lecteur vérifient les images, le son, les fichiers endommagés,
-la file vidéo et la transition vers le jeu. Les appels système Vita sont
-simulés ; ils ne remplacent pas un essai sur console. Le test complet de
-lecture dure environ 111 secondes, comme la vidéo.
+The player tests check video frames, audio, malformed files, the video queue,
+and the transition to the game. Vita system calls are mocked; these tests
+do not replace testing on a console. The full playback test takes about
+111 seconds, matching the video duration.
 
-Pour tester le décodeur ARM lié dans la release :
+To test the ARM decoder linked into the release:
 
 ```sh
 python -m pip install unicorn
 python tools/vita/check-movie-arm.py --limit 16
-# Sans --limit : toutes les images, plus long.
+# Omit --limit to check every frame; this takes longer.
 ```
 
-Les FPS se mesurent sur la Vita ; les tests hôtes ne les prédisent pas.
-Le log de partie est remplacé à chaque lancement. Conserver `intro.log`
-pour un problème de lecteur et les ELF exacts du VPK installé.
+Measure FPS on the Vita; host tests do not predict device performance.
+The gameplay log is overwritten on each launch. Keep `intro.log` when
+investigating player issues, along with the exact ELF files for the installed VPK.
 
-## Préparer les sources
+## Exporting sources
 
 ```sh
 python tools/vita/export-source.py
 ```
 
-L'archive dans `dist/` contient les sources actuelles, les notices, les
-dépendances à leurs révisions enregistrées et la vidéo éditée. Le patch Vita
-complet est inclus et appliqué par CMake à librw. Aucun SDK, ancien VPK, dump,
-log, sauvegarde, donnée de partie ou chemin personnel n'est inclus.
-Elle peut être extraite dans un nouveau dossier et compilée avec un SDK
-installé, sans accéder à l'espace de travail d'origine.
+The archive in `dist/` contains the current sources, notices, dependencies
+at their recorded revisions, and the edited video. The full Vita patch is
+included and applied to librw by CMake. SDK files, old VPKs, crash dumps,
+logs, save files, gameplay data, and personal paths are excluded.
+The archive can be extracted into a new directory and built with an installed
+SDK, without access to the original workspace.
 
-Pour publier le dépôt Git existant, conserver les sous-modules et le patch.
-Pour publier l'archive via un nouveau dépôt, les dépendances sont déjà
-intégrées : aucune métadonnée `.git` n'est incluse dans le ZIP.
-Ne pas ajouter `assets/`, `sdk/`, `build/`, `dist/` ou `.local/` aux sources.
+When publishing an upstream Git checkout, retain its submodules and the patch.
+This repository and exported source archives already include the dependencies.
+No `.git` metadata is included in the ZIP. Do not add `assets/`, `sdk/`,
+`build/`, `dist/`, or `.local/` to the source repository.
 
-Dans le dossier extrait, créer un dépôt Git et envoyer ces sources vers un
-nouveau dépôt GitHub vide, en remplaçant l'URL de l'exemple :
+To publish an extracted archive as a new Git repository, create an empty
+repository on GitHub, then run the following in the extracted directory.
+Replace the example URL with your repository's URL:
 
 ```sh
 git init -b main
 git add .
 git commit -m "Prepare reLCS PS Vita 01.15 with full intro"
-git remote add origin https://github.com/VOTRE-COMPTE/VOTRE-DEPOT.git
+git remote add origin https://github.com/YOUR-ACCOUNT/YOUR-REPOSITORY.git
 git push -u origin main
 ```
 
-La vidéo MP4 fait environ 11 Mo et est suivie normalement par Git, sans LFS.
-Seul le MP4 est versionné, pas le gros VTM généré. Le VPK et les symboles vont
-dans les **Releases**, pas dans l'historique des sources. Les workflows
-produisent des artefacts sans publier automatiquement de release ou de tag.
+The edited MP4 is approximately 11 MB and is tracked directly by Git, without
+LFS. Only the MP4 is versioned, not the large generated VTM. VPKs and symbols
+belong in **Releases**, not in source history. The workflows produce build
+artifacts without automatically publishing releases or tags.

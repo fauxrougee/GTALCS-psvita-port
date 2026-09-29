@@ -1,8 +1,8 @@
-# Traductions françaises des textes PC absents de FRENCH.GXT (version PS2).
-# Format : CLE<TAB>texte. Les clés absentes d'ici reprennent le texte anglais.
-# Majuscules sans accents (la police du jeu ne les gère pas en capitales).
-# !CLE remplace un texte déjà présent dans FRENCH.GXT.
-# FEC_LFA vaut « Caméra/Visée précise » dans la version PS2, mais le PC s'en sert pour la flèche gauche.
+# French translations of PC text missing from the PS2 version of FRENCH.GXT.
+# Format: KEY<TAB>text. Keys not listed here fall back to the English text.
+# Use uppercase without accents (the game font does not support accented capitals).
+# !KEY replaces an entry already present in FRENCH.GXT.
+# FEC_LFA means camera/precise aiming on PS2, but the PC version uses it for the left arrow.
 !FEC_LFA	GAUCHE
 BULL	Lingots
 CVT_ERR	Espace disque insuffisant. Libérez de la place sur votre disque dur avant de continuer. Appuyez sur ECHAP pour annuler.

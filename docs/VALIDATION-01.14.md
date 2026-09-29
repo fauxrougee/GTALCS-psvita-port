@@ -1,34 +1,31 @@
-# Vérification de la 01.14
+# Version 01.14 validation
 
-Validation locale du 29 septembre 2026, avec les outils Windows natifs.
+Local validation performed on September 29, 2026, using native Windows tools.
 
-- Le moteur conserve le comportement de la 01.13 validée sur console. La
-  préparation de cette version modifie la compilation, la distribution et
-  la documentation ; seules des références de commentaires changent dans
-  les sources du moteur.
-- Le jeu et le lecteur d'intro sont compilés depuis les sources. Une seconde
-  compilation complète réussit depuis l'archive extraite dans un dossier
-  neuf contenant des espaces, sans dépôt Git, ancien VPK ni ancien exécutable.
-- L'option `--no-intro` compile et produit un paquet de lancement direct ;
-  le retour à la compilation avec intro est également vérifié.
-- Le conteneur régénéré depuis le MP4 inclus est identique octet pour octet
-  à l'intro complète déjà fonctionnelle : 2 774 images et 5 326 080
-  échantillons stéréo, soit environ 111 secondes.
-- Le lecteur hôte vérifie toutes les images et tout le PCM, les recherches
-  dans la vidéo, la file concurrente et le rejet de fichiers endommagés.
-- Les fonctions ARM réellement liées dans le lecteur sont exécutées avec
-  Unicorn sur les 2 774 images : CRC, décompression LZ4, couleurs et limites
-  des tampons conformes.
-- La simulation de lecture complète et les scénarios d'interruption,
-  d'échec audio/vidéo, de synchronisation et de vidéo absente passent. Le
-  système Vita y est simulé ; les éventuelles images devenues trop anciennes
-  selon l'horloge hôte sont comptabilisées séparément.
-- Les tests de comptage des performances, de conservation des valeurs du
-  rendu et du journal asynchrone passent avec AddressSanitizer.
-- Le VPK est contrôlé : CRC ZIP, empreintes des exécutables et des médias,
-  métadonnées, mémoire étendue, icône et LiveArea. Les segments des ELF ARM
-  du jeu et du lecteur ne se chevauchent pas.
+- The engine retains the behavior of version 01.13, which was tested on a
+  console. Preparing this release changes the build, distribution, and
+  documentation; only comment references change in the engine sources.
+- The game and intro player are built from source. A second full build
+  succeeds from the exported archive in a fresh directory containing spaces,
+  without a Git repository, old VPK, or old executable.
+- The `--no-intro` option builds a direct-launch package; switching back to
+  the full intro build is also verified.
+- The container regenerated from the included MP4 is byte-for-byte identical
+  to the previously working full intro: 2,774 frames and 5,326,080 stereo
+  samples, approximately 111 seconds.
+- The host reader checks every frame and all PCM audio, video seeking, the
+  concurrent queue, and rejection of malformed files.
+- The ARM functions actually linked into the player run under Unicorn for
+  all 2,774 frames: CRC, LZ4 decompression, colors, and buffer bounds pass.
+- Full playback simulation and skip, audio/video failure, synchronization,
+  and missing-video scenarios pass. Vita system calls are mocked; any frames
+  that become too old according to the host clock are counted separately.
+- Performance accounting, rendering value preservation, and asynchronous
+  logging tests pass with AddressSanitizer.
+- The VPK passes checks for ZIP CRCs, executable and media hashes, metadata,
+  extended memory, icon, and LiveArea. ARM ELF load segments do not overlap
+  in either the game or the intro player.
 
-Cette préparation ne mesure pas les FPS sur console. Le VPK 01.14 doit
-encore être essayé sur une PS Vita réelle ; le workflow GitHub Actions
-fourni n'a pas été exécuté sur GitHub pendant cette validation locale.
+These checks do not measure FPS on a console. The 01.14 VPK still needed
+testing on a physical PS Vita at the time of this validation. The supplied
+GitHub Actions workflow was not run on GitHub during these local checks.

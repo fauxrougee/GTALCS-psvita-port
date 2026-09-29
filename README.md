@@ -1,77 +1,76 @@
-# GTA Liberty City Stories — PS Vita
+# GTA Liberty City Stories - PS Vita
 
-Port natif de GTA Liberty City Stories pour PS Vita, préparé par **fauxrouge**,
-à partir de [reStories](https://github.com/knackers4/res) et
+A native GTA Liberty City Stories port for PS Vita, prepared by **fauxrouge**,
+based on [reStories](https://github.com/knackers4/res) and
 [librw](https://github.com/aap/librw).
 
-La version **01.15** conserve le moteur de la 01.13 validée sur console et
-l'intro complète avec son audio. La compilation inclut les cartons
-« fauxrouge present » et « a psvita port », l'icône et la LiveArea avec START.
+Version **01.15** keeps the engine from the hardware-tested 01.13 release and
+the full intro with audio. The build includes the "fauxrouge present" and
+"a psvita port" title cards, the custom icon, and the LiveArea with START.
 
-- Résolution native 960 × 544 ; fréquences demandées CPU 444 / GPU 222 MHz.
-- Limiteur logiciel à 30 FPS retiré ; synchronisation de l'écran conservée.
-- Caches d'éclairage et de reflets, cache de shaders, journal asynchrone.
-- Affichage FPS/CPU/RAM retiré de l'écran ; rapports de performances dans
+- Native 960 x 544 resolution; requested clocks: CPU 444 / GPU 222 MHz.
+- The software 30 FPS limiter is removed; display synchronization is retained.
+- Lighting and reflection caches, shader caching, and asynchronous logging.
+- The FPS/CPU/RAM overlay is removed; performance reports are written to
   `ux0:data/reLCS/log.txt`.
 
-Les performances dépendent de la scène : **45–60 FPS constants ne sont pas
-garantis**. La résolution, les textures, les distances et les effets n'ont pas
-été réduits pour le débridage.
+Performance varies by scene: **a constant 45-60 FPS is not guaranteed**.
+Resolution, textures, draw distances, and effects were not reduced to remove
+the frame rate cap.
 
 ## Installation
 
-Installer le VPK sur une PS Vita équipée d'un environnement homebrew. Placer
-les données LCS converties depuis sa propre version PS2 dans
-`ux0:data/reLCS/` (notamment `models/gta3.img`). Le dépôt contient le moteur et
-la vidéo d'intro modifiée ; il ne contient pas les données nécessaires à la
-partie, les sauvegardes ou les modules système Sony.
+Install the VPK on a homebrew-enabled PS Vita. Place LCS data converted from
+your own PS2 copy in `ux0:data/reLCS/`, including `models/gta3.img`. This
+repository includes the engine and edited intro video. Gameplay data, save
+files, and Sony system modules are not included.
 
-Le compilateur de shaders `libshacccg.suprx` doit être présent sur la console,
-à `ur0:data/libshacccg.suprx` ou `ur0:data/external/libshacccg.suprx`.
-Les informations du projet d'origine et du convertisseur sont conservées
-dans [docs/UPSTREAM.md](docs/UPSTREAM.md).
+The `libshacccg.suprx` shader compiler must be installed on the console at
+`ur0:data/libshacccg.suprx` or `ur0:data/external/libshacccg.suprx`.
+The original project's information and asset converter link are preserved
+in [docs/UPSTREAM.md](docs/UPSTREAM.md).
 
-## Compiler
+## Building
 
-La compilation fonctionne avec **VitaSDK, CMake, Ninja, Python 3.10+ et FFmpeg**.
-Les bibliothèques cible et les instructions Windows/Linux sont détaillées dans
-[vita/README.md](vita/README.md).
+The build requires **VitaSDK, CMake, Ninja, Python 3.10+, and FFmpeg**.
+See [vita/README.md](vita/README.md) for target libraries and Windows/Linux
+setup instructions.
 
-Après installation des prérequis :
+Once the prerequisites are installed:
 
 ```sh
 python -m pip install -r tools/vita/requirements.txt
 python tools/vita/build.py --jobs 4
 ```
 
-L'intro complète et son audio sont inclus par défaut. Le MP4 modifié est fourni
-à `vita/boot/intro.mp4` ; son conteneur de lecture est généré automatiquement.
-Aucun ancien VPK, exécutable précompilé ou dossier personnel n'est nécessaire.
+The full intro and its audio are included by default. The edited MP4 is
+provided at `vita/boot/intro.mp4`; its playback container is generated
+automatically. No older VPK, prebuilt executable, or personal folder is needed.
 
-Les résultats se trouvent dans `dist/` : VPK, symboles du jeu et du lecteur
-séparés, manifeste de vérification et sommes SHA-256.
+Build outputs are placed in `dist/`: the VPK, separate game and intro player
+symbols, a verification manifest, and SHA-256 checksums.
 
 ```sh
-# Petit VPK pour tester le jeu sans l'intro :
+# Build a small VPK for testing the game without the intro:
 python tools/vita/build.py --no-intro --jobs 4
 ```
 
-Sous Windows, le script utilise les outils natifs et ne lance pas WSL.
-Pour un clonage Git, initialiser les dépendances avec
-`git submodule update --init --recursive`. L'archive source exportée contient
-déjà les dépendances ; cette étape n'est pas nécessaire avec cette archive.
+On Windows, the script uses native tools and does not launch WSL.
+This repository includes its dependencies in `vendor/`, so no submodule
+initialization is needed. When working from an upstream checkout that uses
+submodules, run `git submodule update --init --recursive` first.
 
-## Organisation et contribution
+## Repository layout and contributing
 
-- `src/` : moteur et adaptation Vita ; la 01.15 retire l'affichage des compteurs.
-- `vendor/` : dépendances d'origine ; le patch Vita de librw est appliqué par CMake.
-- `vita/launcher/` : lecteur d'intro isolé, qui lance ensuite le jeu.
-- `vita/boot/intro.mp4` : vidéo éditée ; les fichiers intermédiaires ne sont pas versionnés.
-- `vita/sce_sys/` : icône et LiveArea.
-- `tools/vita/` : compilation, conversion, tests et export des sources.
-- `tools/frenchfix/` : complément des textes de menu français, facultatif.
+- `src/`: engine and Vita adaptation; 01.15 removes the performance overlay.
+- `vendor/`: upstream dependencies; CMake applies the Vita patch to librw.
+- `vita/launcher/`: isolated intro player that launches the game afterward.
+- `vita/boot/intro.mp4`: edited video; generated intermediate files are not tracked.
+- `vita/sce_sys/`: icon and LiveArea assets.
+- `tools/vita/`: build, conversion, validation, and source export tools.
+- `tools/frenchfix/`: optional fixes for missing French menu text.
 
-Voir [les vérifications de cette version](docs/VALIDATION-01.15.md),
-[les tests et la publication](docs/DEVELOPMENT.md) et
-[les crédits et licences](docs/CREDITS.md). Le workflow Vita construit un
-artefact ; il ne publie pas de release et ne déplace aucun tag automatiquement.
+See the [release validation notes](docs/VALIDATION-01.15.md),
+[testing and publishing guide](docs/DEVELOPMENT.md), and
+[credits and license notices](docs/CREDITS.md). The Vita workflow produces
+build artifacts; it does not publish releases or move tags automatically.

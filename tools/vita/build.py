@@ -71,7 +71,7 @@ def main():
     subprocess.run([sys.executable,str(ROOT/'tools/vita/package-release.py'),'--build-dir',str(build),
                     '--version',version,'--verify-only',*([] if args.no_intro else ['--intro'])],check=True)
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    name = 'reLCS-'+version+('-sans-intro' if args.no_intro else '-intro-complete')
+    name = 'reLCS-'+version+('-no-intro' if args.no_intro else '-intro-complete')
     outputs = {'reLCS.vpk': name+'.vpk', 'reLCS': name+'-game.elf', 'release.json': name+'.json'}
     if not args.no_intro:
         outputs['relcs_intro'] = name+'-launcher.elf'
