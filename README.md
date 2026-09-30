@@ -64,8 +64,6 @@ Check that `gta3.img` is at **`ux0:data/reLCS/models/gta3.img`**. An extra folde
 
 Download [**reLCS 01.16 with the full intro**](https://github.com/fauxrougee/GTALCS-psvita-port/releases/download/v01.16/reLCS-01.16-intro-complete.vpk) (163 MB).
 
-Prefer a quick install? The [**version without the intro**](https://github.com/fauxrougee/GTALCS-psvita-port/releases/download/v01.16/reLCS-01.16-sans-intro.vpk) (4.5 MB) goes straight to game loading. Both versions use the same game data and saves.
-
 Copy the `.vpk` to your Vita, open it in VitaShell, and install it. The ZIP files labeled *Source code* on the release page are for developers.
 
 ### 4. Play
@@ -104,7 +102,7 @@ Install the VPK linked above, which includes the full video and sound. If the pr
 
 Performance depends on the area and what is happening on screen. The software 30 FPS cap is removed, but this is not a locked 60 FPS release. The port requests its CPU and GPU clocks at startup; there is no separate overclocking step in this guide.
 
-For a performance report, include the location or mission, what was happening, and `ux0:data/reLCS/log.txt` from that session. You can also run the separate [benchmark app](docs/BENCHMARK.md) for a repeatable comparison.
+For a performance report, include the location or mission, what was happening, and `ux0:data/reLCS/log.txt` from that session.
 
 </details>
 
