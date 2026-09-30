@@ -61,13 +61,17 @@ Use the Python from your virtual environment when running these commands:
 
 ```sh
 python tools/vita/build.py --no-intro
+python tools/vita/build.py --benchmark
 python tools/vita/build.py --sdk /path/to/sdk --build-dir /path/to/build --output-dir /path/to/dist --jobs 4
 ```
 
-The full build writes `dist/reLCS-01.15-intro-complete.vpk`.
-`--no-intro` produces the smaller `dist/reLCS-01.15-no-intro.vpk` for testing.
+The full build writes `dist/reLCS-01.16-intro-complete.vpk`.
+`--no-intro` produces the smaller `dist/reLCS-01.16-sans-intro.vpk` for testing.
 Both builds also export ELF files and checksums. Keep the ELF files matching
 the installed VPK when investigating a crash dump.
+
+`--benchmark` builds `dist/reLCS-01.16-benchmark.vpk` in `build/vita-bench/`.
+It has its own bubble and never includes the intro. See the [benchmark guide](../docs/BENCHMARK.md).
 
 <details>
 <summary>Using CMake directly</summary>

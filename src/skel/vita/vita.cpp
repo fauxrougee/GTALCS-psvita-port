@@ -60,7 +60,14 @@ VitaInit(void)
 	sceIoMkdir(VITA_DATA_DIR, 0777);
 	chdir(VITA_DATA_DIR);
 
+#ifdef RELCS_BENCHMARK
+	// Own log, truncated at each run: the game's log.txt is left alone.
+	sceIoMkdir(VITA_DATA_DIR "benchmark", 0777);
+	const bool asyncLog = VitaLogInit(VITA_DATA_DIR "benchmark/log.txt");
+	printf("[BENCH] reLCS Benchmark, results in %sbenchmark/\n", VITA_DATA_DIR);
+#else
 	const bool asyncLog = VitaLogInit(VITA_DATA_DIR "log.txt");
+#endif
 	printf("reLCS Vita, data in %s\n", VITA_DATA_DIR);
 	printf("[VITA] Clock requests CPU/bus/GPU/xbar results=%d/%d/%d/%d; actual MHz=%d/%d/%d/%d\n",
 	       armResult, busResult, gpuResult, xbarResult, scePowerGetArmClockFrequency(),
@@ -74,6 +81,7 @@ VitaInit(void)
 	printf("[VITA] Lightweight GL profiling enabled\n");
 #endif
 	printf("[VITA] Software frame limiter removed; cached lighting/reflection uniforms; active-uniform traversal\n");
+	printf("[VITA] Renderer 01.16: typed custom uniform cache, persistent vertex layouts, indexed draw bounds, opaque world shaders, ordered particle batches (256 sprites)\n");
 	VitaPerfInit();
 
 	// vitaGL compiles shaders at runtime with the system's shader compiler.
@@ -100,9 +108,37 @@ VitaGetPerformanceStats(void)
 	return performanceStats;
 }
 
+static void
+SampleMemoryStats(void)
+{
+	const struct mallinfo mi = mallinfo();
+	performanceStats.heapUsed = mi.uordblks;
+	performanceStats.heapTotal = _newlib_heap_size_user;
+	performanceStats.graphicsUsed = performanceStats.graphicsTotal = 0;
+	// EXTERNAL allocations already belong to the newlib heap: don't count twice.
+	const vglMemType pools[] = { VGL_MEM_RAM, VGL_MEM_VRAM, VGL_MEM_PHYCONT, VGL_MEM_BUDGET };
+	for(vglMemType pool : pools){
+		const size_t total = vglMemTotal(pool);
+		const size_t free = vglMemFree(pool);
+		performanceStats.graphicsTotal += total;
+		performanceStats.graphicsUsed += total > free ? total - free : 0;
+	}
+}
+
+#ifdef RELCS_BENCHMARK
+static bool frameSampling = true;
+
+void VitaSetFrameSampling(bool on) { frameSampling = on; }
+void VitaSampleMemoryNow(void) { SampleMemoryStats(); }
+#endif
+
 void
 VitaRecordPresentedFrame(void)
 {
+#ifdef RELCS_BENCHMARK
+	if(!frameSampling)
+		return;
+#endif
 	static SceUInt64 lastSample;
 	static unsigned int frames;
 	static SceKernelSystemInfo previous = {};
@@ -131,18 +167,7 @@ VitaRecordPresentedFrame(void)
 	previous = current;
 	havePreviousCPU = haveCPU;
 
-	const struct mallinfo mi = mallinfo();
-	performanceStats.heapUsed = mi.uordblks;
-	performanceStats.heapTotal = _newlib_heap_size_user;
-	performanceStats.graphicsUsed = performanceStats.graphicsTotal = 0;
-	// EXTERNAL allocations already belong to the newlib heap: don't count twice.
-	const vglMemType pools[] = { VGL_MEM_RAM, VGL_MEM_VRAM, VGL_MEM_PHYCONT, VGL_MEM_BUDGET };
-	for(vglMemType pool : pools){
-		const size_t total = vglMemTotal(pool);
-		const size_t free = vglMemFree(pool);
-		performanceStats.graphicsTotal += total;
-		performanceStats.graphicsUsed += total > free ? total - free : 0;
-	}
+	SampleMemoryStats();
 	frames = 0;
 	lastSample = now;
 }
@@ -292,6 +317,49 @@ VitaProfReportSections(int frames)
 		s->maxFrame = 0;
 	}
 	profCalls = 0;
+}
+
+static const ProfSection *
+ProfSectionAt(int i)
+{
+	return i >= 0 && i < numProfSections ? &profSections[i] : nullptr;
+}
+
+int VitaProfSectionCount(void) { return numProfSections; }
+
+const char *
+VitaProfSectionName(int i)
+{
+	const ProfSection *s = ProfSectionAt(i);
+	return s ? s->name : "";
+}
+
+int
+VitaProfSectionParent(int i)
+{
+	const ProfSection *s = ProfSectionAt(i);
+	return s ? s->parent : -1;
+}
+
+int
+VitaProfSectionDepth(int i)
+{
+	const ProfSection *s = ProfSectionAt(i);
+	return s ? s->depth : 0;
+}
+
+unsigned int
+VitaProfSectionFrameUs(int i)
+{
+	const ProfSection *s = ProfSectionAt(i);
+	return s ? (unsigned int)s->frameTotal : 0;
+}
+
+unsigned int
+VitaProfSectionFrameCalls(int i)
+{
+	const ProfSection *s = ProfSectionAt(i);
+	return s ? s->frameCalls : 0;
 }
 
 const char *

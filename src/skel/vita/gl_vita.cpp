@@ -61,6 +61,33 @@ struct GLProfCounters {
 static GLProfCounters prof, committedProf;
 static bool countCalls = true;	// [VitaPerf] GLCounters
 
+#ifdef RELCS_BENCHMARK
+// Benchmark totals: a frame's calls are added when it is kept or dropped (and
+// calls outside any frame before a reset), so every call counts exactly once.
+struct GLTotals {
+	SceUInt64 time[PROF_COUNT], calls[PROF_COUNT];
+	SceUInt64 indices, vertexBytes, indexBytes, textureBytes;
+};
+static GLTotals totals;
+
+// t += prof - committedProf: the calls since the last commit, discard or reset.
+static void
+AddPendingCalls(GLTotals *t)
+{
+	for(int i = 0; i < PROF_COUNT; i++){
+		t->time[i] += prof.time[i] - committedProf.time[i];
+		t->calls[i] += (unsigned int)(prof.calls[i] - committedProf.calls[i]);
+	}
+	t->indices += prof.indices - committedProf.indices;
+	t->vertexBytes += prof.vertexBytes - committedProf.vertexBytes;
+	t->indexBytes += prof.indexBytes - committedProf.indexBytes;
+	t->textureBytes += prof.textureBytes - committedProf.textureBytes;
+}
+#define BENCH_FOLD_CALLS() AddPendingCalls(&totals)
+#else
+#define BENCH_FOLD_CALLS() ((void)0)
+#endif
+
 struct ProfScope {
 	int id;
 	SceUInt64 start;
@@ -71,9 +98,17 @@ struct ProfScope {
 	}
 };
 
-void VitaGLProfSetCounting(bool enable) { countCalls = enable; }
-void VitaGLProfCommitFrame(void) { committedProf = prof; }
-void VitaGLProfDiscardFrame(void) { prof = committedProf; }
+void
+VitaGLProfSetCounting(bool enable)
+{
+#ifdef RELCS_BENCHMARK
+	enable = true;	// draw modes and flat textures live in the wrappers
+#endif
+	countCalls = enable;
+}
+
+void VitaGLProfCommitFrame(void) { BENCH_FOLD_CALLS(); committedProf = prof; }
+void VitaGLProfDiscardFrame(void) { BENCH_FOLD_CALLS(); prof = committedProf; }
 
 // Bytes sent by a texture upload; 0 when only allocating (no pixels).
 static SceUInt64
@@ -174,9 +209,180 @@ VitaGLProfReport(int frames)
 			printf("\n");
 		}
 	}
+	BENCH_FOLD_CALLS();
 	memset(&prof, 0, sizeof(prof));
 	memset(&committedProf, 0, sizeof(committedProf));
 }
+
+#ifdef RELCS_BENCHMARK
+void
+VitaGLProfReset(void)
+{
+	// Drops the kept frames; the frame in progress stays pending (the totals
+	// still see prof - committedProf unchanged).
+	GLProfCounters &p = prof;
+	const GLProfCounters &c = committedProf;
+	for(int i = 0; i < PROF_COUNT; i++){
+		p.time[i] -= c.time[i];
+		p.calls[i] -= c.calls[i];
+		p.bytes[i] -= c.bytes[i];
+	}
+	p.indices -= c.indices;
+	p.vertexBytes -= c.vertexBytes;
+	p.indexBytes -= c.indexBytes;
+	p.textureBytes -= c.textureBytes;
+	memset(&committedProf, 0, sizeof(committedProf));
+	longSleeps = 0;
+	longSleepTime = 0;
+}
+
+void
+VitaGLGetTotals(VitaGLTotals *out)
+{
+	GLTotals t = totals;
+	AddPendingCalls(&t);
+	const SceUInt64 *c = t.calls;
+	out->draws = c[PROF_DrawElements] + c[PROF_DrawArrays];
+	out->indices = t.indices;
+	out->uniforms = c[PROF_Uniform];
+	out->texBinds = c[PROF_BindTexture];
+	out->bufBinds = c[PROF_BindBuffer];
+	out->programs = c[PROF_UseProgram];
+	out->stateCalls = c[PROF_EnableDisable] + c[PROF_BlendDepthCull] + c[PROF_TexParameter] + c[PROF_VertexAttribPointer];
+	out->vertexBytes = t.vertexBytes;
+	out->indexBytes = t.indexBytes;
+	out->textureBytes = t.textureBytes;
+	out->textureUs = t.time[PROF_TexImage2D] + t.time[PROF_TexSubImage2D] + t.time[PROF_CompressedTexImage2D];
+	out->shaderCompiles = c[PROF_CompileShader] + c[PROF_LinkProgram];
+}
+
+// ---- Benchmark render experiments (3D scope only) -------------------------
+
+#define BENCH_TEX_UNITS 16
+static bool scope3D, flatTextures;
+static int drawMode;
+static GLuint flatTexture;
+static int activeUnit;
+// Per unit: the 2D texture librw bound, and the one really bound (the flat
+// texture while substituted).
+static GLuint requestedTex[BENCH_TEX_UNITS], boundTex[BENCH_TEX_UNITS];
+static void (*real_glActiveTexture)(GLenum texture);
+
+static void
+BenchActiveTexture(GLenum texture)
+{
+	int unit = (int)texture - GL_TEXTURE0;
+	if(unit >= 0 && unit < BENCH_TEX_UNITS)
+		activeUnit = unit;
+	real_glActiveTexture(texture);
+}
+
+// Created on first use, left bound on the active unit (direct vitaGL calls).
+static GLuint
+FlatTexture(void)
+{
+	if(flatTexture == 0){
+		static const unsigned char white[4] = { 255, 255, 255, 255 };
+		glGenTextures(1, &flatTexture);
+		if(flatTexture == 0){
+			printf("[BENCH] flat texture: glGenTextures failed, flat textures off\n");
+			flatTextures = false;
+			return 0;
+		}
+		glBindTexture(GL_TEXTURE_2D, flatTexture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
+	return flatTexture;
+}
+
+// glBindTexture: records librw's binding, returns the texture to bind.
+static GLuint
+BenchBindTexture(GLenum target, GLuint texture)
+{
+	if(target != GL_TEXTURE_2D)
+		return texture;
+	requestedTex[activeUnit] = texture;
+	if(scope3D && flatTextures && texture != 0){
+		GLuint flat = FlatTexture();
+		if(flat)
+			texture = flat;
+	}
+	boundTex[activeUnit] = texture;
+	return texture;
+}
+
+// Uploads and parameters must reach librw's texture, not the flat one.
+struct BenchTexGuard {
+	GLuint restore;
+	BenchTexGuard(void) : restore(0) {
+		if(boundTex[activeUnit] != requestedTex[activeUnit]){
+			restore = boundTex[activeUnit];
+			glBindTexture(GL_TEXTURE_2D, requestedTex[activeUnit]);
+		}
+	}
+	~BenchTexGuard() { if(restore) glBindTexture(GL_TEXTURE_2D, restore); }
+};
+
+// Deleting a bound texture reverts the binding to 0.
+static void
+BenchDeleteTextures(GLsizei n, const GLuint *textures)
+{
+	for(GLsizei i = 0; i < n; i++)
+		for(int u = 0; u < BENCH_TEX_UNITS; u++){
+			if(requestedTex[u] == textures[i]) requestedTex[u] = 0;
+			if(boundTex[u] == textures[i]) boundTex[u] = 0;
+		}
+}
+
+// librw caches its bindings: give it back exactly what it thinks is bound.
+static void
+RestoreTextureBindings(void)
+{
+	int current = activeUnit;
+	for(int u = 0; u < BENCH_TEX_UNITS; u++){
+		if(boundTex[u] == requestedTex[u])
+			continue;
+		if(u != current){
+			glActiveTexture(GL_TEXTURE0 + u);
+			current = u;
+		}
+		glBindTexture(GL_TEXTURE_2D, requestedTex[u]);
+		boundTex[u] = requestedTex[u];
+	}
+	if(current != activeUnit)
+		glActiveTexture(GL_TEXTURE0 + activeUnit);
+}
+
+void
+VitaGLBenchScope3D(bool on)
+{
+	scope3D = on;
+	if(!on)
+		RestoreTextureBindings();
+}
+
+void VitaGLBenchSetDrawMode(int mode) { drawMode = mode >= 0 && mode <= 2 ? mode : 0; }
+void VitaGLBenchSetFlatTextures(bool on) { flatTextures = on; }
+
+// TINY keeps every draw call (state, uniforms, vitaGL patching) with one
+// primitive at most; NULL returns before vitaGL.
+static GLsizei
+OnePrimitive(GLenum mode)
+{
+	return mode == GL_POINTS ? 1 : mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP ? 2 : 3;
+}
+#define BENCH_DRAW_FILTER(mode, count) if(scope3D && drawMode){ if(drawMode == 2) return; if(count > OnePrimitive(mode)) count = OnePrimitive(mode); }
+#define BENCH_BIND(target, texture) texture = BenchBindTexture(target, texture)
+#define BENCH_TEX_GUARD BenchTexGuard benchTexGuard
+#define BENCH_DELETE(n, textures) BenchDeleteTextures(n, textures)
+#else
+#define BENCH_DRAW_FILTER(mode, count) (void)0
+#define BENCH_BIND(target, texture) (void)0
+#define BENCH_TEX_GUARD (void)0
+#define BENCH_DELETE(n, textures) (void)0
+#endif
 
 // Declares real_<name> (vitaGL's entry point), a timed wrapper_<name> and a
 // count_<name> that only counts the call (no clock reads). `extra` runs in
@@ -188,43 +394,46 @@ VitaGLProfReport(int frames)
 #define TIMED(id, name, params, args) WRAPPED(id, name, params, args, (void)0)
 
 WRAPPED(PROF_DrawElements, glDrawElements, (GLenum mode, GLsizei count, GLenum type, const void *indices), (mode, count, type, indices),
-	prof.indices += count)
+	prof.indices += count; BENCH_DRAW_FILTER(mode, count))
+WRAPPED(PROF_DrawElements, glDrawRangeElements, (GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const void *indices),
+	(mode, start, end, count, type, indices), prof.indices += count; BENCH_DRAW_FILTER(mode, count))
 WRAPPED(PROF_DrawArrays, glDrawArrays, (GLenum mode, GLint first, GLsizei count), (mode, first, count),
-	prof.indices += count)
+	prof.indices += count; BENCH_DRAW_FILTER(mode, count))
 WRAPPED(PROF_BufferData, glBufferData, (GLenum target, GLsizeiptr size, const void *data, GLenum usage), (target, size, data, usage),
 	(prof.bytes[PROF_BufferData] += data ? size : 0, CountBufferBytes(target, size, data)))
 WRAPPED(PROF_BufferSubData, glBufferSubData, (GLenum target, GLintptr offset, GLsizeiptr size, const void *data), (target, offset, size, data),
 	(prof.bytes[PROF_BufferSubData] += data ? size : 0, CountBufferBytes(target, size, data)))
 WRAPPED(PROF_TexImage2D, glTexImage2D, (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void *pixels),
 	(target, level, internalformat, width, height, border, format, type, pixels),
-	CountTextureBytes(PROF_TexImage2D, TextureBytes(width, height, format, type, pixels)))
+	CountTextureBytes(PROF_TexImage2D, TextureBytes(width, height, format, type, pixels)); BENCH_TEX_GUARD)
 WRAPPED(PROF_TexSubImage2D, glTexSubImage2D, (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels),
 	(target, level, xoffset, yoffset, width, height, format, type, pixels),
-	CountTextureBytes(PROF_TexSubImage2D, TextureBytes(width, height, format, type, pixels)))
+	CountTextureBytes(PROF_TexSubImage2D, TextureBytes(width, height, format, type, pixels)); BENCH_TEX_GUARD)
 WRAPPED(PROF_CompressedTexImage2D, glCompressedTexImage2D, (GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const void *data),
 	(target, level, internalformat, width, height, border, imageSize, data),
-	CountTextureBytes(PROF_CompressedTexImage2D, data ? imageSize : 0))
-TIMED(PROF_CopyTexImage2D, glCopyTexImage2D, (GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLsizei height, GLint border),
-	(target, level, internalformat, x, y, width, height, border))
-TIMED(PROF_CopyTexSubImage2D, glCopyTexSubImage2D, (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height),
-	(target, level, xoffset, yoffset, x, y, width, height))
+	CountTextureBytes(PROF_CompressedTexImage2D, data ? imageSize : 0); BENCH_TEX_GUARD)
+WRAPPED(PROF_CopyTexImage2D, glCopyTexImage2D, (GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLsizei height, GLint border),
+	(target, level, internalformat, x, y, width, height, border), BENCH_TEX_GUARD)
+WRAPPED(PROF_CopyTexSubImage2D, glCopyTexSubImage2D, (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height),
+	(target, level, xoffset, yoffset, x, y, width, height), BENCH_TEX_GUARD)
 TIMED(PROF_ReadPixels, glReadPixels, (GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void *pixels),
 	(x, y, width, height, format, type, pixels))
-TIMED(PROF_GenerateMipmap, glGenerateMipmap, (GLenum target), (target))
-TIMED(PROF_DeleteTextures, glDeleteTextures, (GLsizei n, const GLuint *textures), (n, textures))
+WRAPPED(PROF_GenerateMipmap, glGenerateMipmap, (GLenum target), (target), BENCH_TEX_GUARD)
+WRAPPED(PROF_DeleteTextures, glDeleteTextures, (GLsizei n, const GLuint *textures), (n, textures), BENCH_DELETE(n, textures))
 TIMED(PROF_CompileShader, glCompileShader, (GLuint shader), (shader))
 TIMED(PROF_UseProgram, glUseProgram, (GLuint program), (program))
 TIMED(PROF_Uniform, glUniform1i, (GLint location, GLint v0), (location, v0))
 TIMED(PROF_Uniform, glUniform1f, (GLint location, GLfloat v0), (location, v0))
+TIMED(PROF_Uniform, glUniform1fv, (GLint location, GLsizei count, const GLfloat *value), (location, count, value))
 TIMED(PROF_Uniform, glUniform3fv, (GLint location, GLsizei count, const GLfloat *value), (location, count, value))
 TIMED(PROF_Uniform, glUniform4fv, (GLint location, GLsizei count, const GLfloat *value), (location, count, value))
 TIMED(PROF_Uniform, glUniform4iv, (GLint location, GLsizei count, const GLint *value), (location, count, value))
 TIMED(PROF_Uniform, glUniformMatrix4fv, (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value), (location, count, transpose, value))
 TIMED(PROF_BindFramebuffer, glBindFramebuffer, (GLenum target, GLuint framebuffer), (target, framebuffer))
 TIMED(PROF_Clear, glClear, (GLbitfield mask), (mask))
-TIMED(PROF_BindTexture, glBindTexture, (GLenum target, GLuint texture), (target, texture))
-TIMED(PROF_TexParameter, glTexParameteri, (GLenum target, GLenum pname, GLint param), (target, pname, param))
-TIMED(PROF_TexParameter, glTexParameterf, (GLenum target, GLenum pname, GLfloat param), (target, pname, param))
+WRAPPED(PROF_BindTexture, glBindTexture, (GLenum target, GLuint texture), (target, texture), BENCH_BIND(target, texture))
+WRAPPED(PROF_TexParameter, glTexParameteri, (GLenum target, GLenum pname, GLint param), (target, pname, param), BENCH_TEX_GUARD)
+WRAPPED(PROF_TexParameter, glTexParameterf, (GLenum target, GLenum pname, GLfloat param), (target, pname, param), BENCH_TEX_GUARD)
 TIMED(PROF_VertexAttribPointer, glVertexAttribPointer, (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer),
 	(index, size, type, normalized, stride, pointer))
 TIMED(PROF_FinishFlush, glFinish, (void), ())
@@ -293,9 +502,9 @@ static struct {
 	// Draw/state calls occur thousands of times per frame: two clock reads each
 	// would add measurable CPU time. Normal builds count them ([VitaPerf]
 	// GLCounters=1, one increment each) or return vitaGL's entry points directly.
-	ENTRY(glDrawElements, true), ENTRY(glDrawArrays, true), ENTRY(glBufferData, true),
+	ENTRY(glDrawElements, true), ENTRY(glDrawRangeElements, true), ENTRY(glDrawArrays, true), ENTRY(glBufferData, true),
 	ENTRY(glBufferSubData, true), ENTRY(glUseProgram, true), ENTRY(glUniform1i, true),
-	ENTRY(glUniform1f, true), ENTRY(glUniform3fv, true), ENTRY(glUniform4fv, true),
+	ENTRY(glUniform1f, true), ENTRY(glUniform1fv, true), ENTRY(glUniform3fv, true), ENTRY(glUniform4fv, true),
 	ENTRY(glUniform4iv, true), ENTRY(glUniformMatrix4fv, true), ENTRY(glBindFramebuffer, true),
 	ENTRY(glClear, true), ENTRY(glBindTexture, true), ENTRY(glTexParameteri, true),
 	ENTRY(glTexParameterf, true), ENTRY(glVertexAttribPointer, true), ENTRY(glEnable, true),
@@ -315,6 +524,13 @@ VitaGLGetProcAddress(const char *name)
 		return (void*)DeferredBindAttribLocation;
 	if(strcmp(name, "glLinkProgram") == 0)
 		return (void*)LinkProgramWithBindings;
+#ifdef RELCS_BENCHMARK
+	// Texture unit tracking for the flat texture experiment
+	if(strcmp(name, "glActiveTexture") == 0){
+		real_glActiveTexture = (void (*)(GLenum))vglGetProcAddress(name);
+		return real_glActiveTexture ? (void*)BenchActiveTexture : nullptr;
+	}
+#endif
 
 	void *proc = vglGetProcAddress(name);
 	if(proc == nullptr)

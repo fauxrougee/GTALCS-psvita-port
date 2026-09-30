@@ -1770,6 +1770,34 @@ void CParticle::Render()
 	uint32 flags = DRAW_OPAQUE;
 	
 	RwRaster *prevFrame = nil;
+
+#ifdef PSP2
+	// Track the original texture selection even for invisible particles, but
+	// submit it only when a sprite is actually drawn. Never reorder particles.
+	RwRaster *particleFrame = nil;
+	bool bufferIs2D = false;
+	auto prepareDraw = [&](tParticleSystemData *system) {
+		uint32 blendFlags = system->Flags & (DRAW_OPAQUE | DRAW_DARK);
+		bool is2D = (system->Flags & DRAWTOP2D) != 0;
+		if((flags & (DRAW_OPAQUE | DRAW_DARK)) != blendFlags){
+			CSprite::FlushSpriteBuffer();
+			RwRenderStateSet(rwRENDERSTATESRCBLEND,
+				(void*)((blendFlags & (DRAW_OPAQUE | DRAW_DARK)) ? rwBLENDSRCALPHA : rwBLENDONE));
+			RwRenderStateSet(rwRENDERSTATEDESTBLEND,
+				(void*)((blendFlags & DRAW_OPAQUE) ? rwBLENDINVSRCALPHA : rwBLENDONE));
+			flags = blendFlags;
+		}
+		if(bufferIs2D != is2D){
+			CSprite::FlushSpriteBuffer();
+			bufferIs2D = is2D;
+		}
+		if(prevFrame != particleFrame){
+			CSprite::FlushSpriteBuffer();
+			RwRenderStateSet(rwRENDERSTATETEXTURERASTER, (void*)particleFrame);
+			prevFrame = particleFrame;
+		}
+	};
+#endif
 	
 	for ( int32 i = 0; i < MAX_PARTICLES; i++ )
 	{
@@ -1796,6 +1824,10 @@ void CParticle::Render()
 		*/
 		if ( particle )
 		{
+#ifdef PSP2
+			if(frames != nil)
+				particleFrame = *frames;
+#else
 			if ( (flags & DRAW_OPAQUE) != (psystem->Flags & DRAW_OPAQUE)
 				|| (flags & DRAW_DARK) != (psystem->Flags & DRAW_DARK) )
 			{
@@ -1829,6 +1861,7 @@ void CParticle::Render()
 					prevFrame = curFrame;
 				}
 			}
+#endif
 		}
 		
 		while ( particle != nil )
@@ -1843,16 +1876,23 @@ void CParticle::Render()
 			if ( canDraw && psystem->m_nFinalAnimationFrame != 0 && frames != nil )
 			{
 				RwRaster *curFrame = frames[particle->m_nCurrentFrame];
+#ifdef PSP2
+				particleFrame = curFrame;
+#else
 				if ( prevFrame != curFrame )
 				{
 					CSprite::FlushSpriteBuffer();
 					RwRenderStateSet(rwRENDERSTATETEXTURERASTER, (void *)curFrame);
 					prevFrame = curFrame;
 				}
+#endif
 			}
 			
 			if ( canDraw && psystem->Flags & DRAWTOP2D )
 			{
+#ifdef PSP2
+				prepareDraw(psystem);
+#endif
 				float screenZ = CalcScreenZ(particle->m_vecPosition.z);
 				
 				float stretchTexW;
@@ -1907,6 +1947,9 @@ void CParticle::Render()
 
 				if ( CSprite::CalcScreenCoors(particle->m_vecPosition, &coors, &w, &h, true) )
 				{
+#ifdef PSP2
+					prepareDraw(psystem);
+#endif
 					
 					if ( i == PARTICLE_ENGINE_STEAM
 						|| i == PARTICLE_ENGINE_SMOKE
@@ -2104,9 +2147,19 @@ void CParticle::Render()
 			particle = particle->m_pNext;
 		}
 
+		// The state changes above already flush incompatible batches. On Vita,
+		// keep adjacent compatible types together, including smoke and rain.
+#ifndef PSP2
 		CSprite::FlushSpriteBuffer();
-
+#endif
 	}
+	CSprite::FlushSpriteBuffer();
+#ifdef PSP2
+	// Leave the same selected raster as the original traversal, even if its
+	// final particles were clipped and needed no draw.
+	if(prevFrame != particleFrame)
+		RwRenderStateSet(rwRENDERSTATETEXTURERASTER, (void*)particleFrame);
+#endif
 	
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void *)FALSE);
 	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void *)TRUE);

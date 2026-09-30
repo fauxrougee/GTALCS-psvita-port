@@ -60,7 +60,12 @@ CSprite::CalcScreenCoors(const RwV3d &in, RwV3d *out, float *outw, float *outh, 
 	return true;
 }
 
+#ifdef PSP2
+// Same triangles and order, fewer uploads/draws during rain and smoke.
+#define SPRITEBUFFERSIZE 256
+#else
 #define SPRITEBUFFERSIZE 64
+#endif
 static int32 nSpriteBufferIndex;
 static RwIm2DVertex SpriteBufferVerts[SPRITEBUFFERSIZE*6];
 static RwIm2DVertex verts[4];

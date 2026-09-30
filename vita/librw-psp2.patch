@@ -1,12 +1,15 @@
 diff --git a/src/gl/gl3device.cpp b/src/gl/gl3device.cpp
-index adf2398..e5b78fa 100644
+index adf2398..5abb841 100644
 --- a/src/gl/gl3device.cpp
 +++ b/src/gl/gl3device.cpp
-@@ -1843,6 +1843,17 @@ initOpenGL(void)
+@@ -1843,6 +1843,20 @@ initOpenGL(void)
  
  	resetRenderState();
  
 +#ifdef PSP2
++#ifndef RW_GL_USE_VAOS
++	resetVertexInputState();
++#endif
 +	// Meshes without prelight colours (peds, most vehicles) or normals leave
 +	// these attributes disabled and rely on the GL defaults. vitaGL reads them
 +	// from uninitialised memory instead of (0,0,0,1): set the defaults.
@@ -92,8 +95,90 @@ index b66b7e5..dd08851 100644
  
  	flushCache();
  	glDrawElements(primTypeMap[primType], numIndices,
+diff --git a/src/gl/gl3render.cpp b/src/gl/gl3render.cpp
+index a02c5c0..9c7242e 100644
+--- a/src/gl/gl3render.cpp
++++ b/src/gl/gl3render.cpp
+@@ -24,6 +24,19 @@ void
+ drawInst_simple(InstanceDataHeader *header, InstanceData *inst)
+ {
+ 	flushCache();
++#ifdef PSP2
++	// Mesh instancing already computes the exact index range. Supply it to
++	// vitaGL instead of letting the driver scan the indices again per draw.
++	// Keep a fallback for empty meshes, unavailable entry points or bad bounds.
++	if(glDrawRangeElements && inst->numVertices > 0){
++		uint32 end = inst->minVert + inst->numVertices - 1;
++		if(end < header->totalNumVertex && end <= 0xFFFF){
++			glDrawRangeElements(header->primType, inst->minVert, end,
++			                   inst->numIndex, GL_UNSIGNED_SHORT, (void*)(uintptr)inst->offset);
++			return;
++		}
++	}
++#endif
+ 	glDrawElements(header->primType, inst->numIndex,
+ 	               GL_UNSIGNED_SHORT, (void*)(uintptr)inst->offset);
+ }
+@@ -71,23 +84,57 @@ drawInst(InstanceDataHeader *header, InstanceData *inst)
+ }
+ 
+ 
++#if defined(PSP2) && !defined(RW_GL_USE_VAOS)
++// All Vita layouts go through setAttribPointers, including Im2D/Im3D and skin.
++// Keep arrays enabled between draws; disable missing attributes BEFORE the next
++// draw so their constant defaults still work. Pointers are always refreshed:
++// a streamed or reallocated VBO can change storage without changing its name.
++static uint32 enabledAttribMask;
++
++void
++resetVertexInputState(void)
++{
++	for(uint32 index = 0; index < 32; index++)
++		if(enabledAttribMask & (1u << index))
++			glDisableVertexAttribArray(index);
++	enabledAttribMask = 0;
++}
++#endif
++
+ void
+ setAttribPointers(AttribDesc *attribDescs, int32 numAttribs)
+ {
+ 	AttribDesc *a;
++#if defined(PSP2) && !defined(RW_GL_USE_VAOS)
++	uint32 desired = 0;
++	for(a = attribDescs; a != &attribDescs[numAttribs]; a++)
++		desired |= 1u << a->index;
++	uint32 removed = enabledAttribMask & ~desired;
++	for(uint32 index = 0; removed; index++, removed >>= 1)
++		if(removed & 1u)
++			glDisableVertexAttribArray(index);
++#endif
+ 	for(a = attribDescs; a != &attribDescs[numAttribs]; a++){
++#if defined(PSP2) && !defined(RW_GL_USE_VAOS)
++		if(!(enabledAttribMask & (1u << a->index)))
++#endif
+ 		glEnableVertexAttribArray(a->index);
+ 		glVertexAttribPointer(a->index, a->size, a->type, a->normalized,
+ 		                      a->stride, (void*)(uint64)a->offset);
+ 	}
++#if defined(PSP2) && !defined(RW_GL_USE_VAOS)
++	enabledAttribMask = desired;
++#endif
+ }
+ 
+ void
+ disableAttribPointers(AttribDesc *attribDescs, int32 numAttribs)
+ {
++#if !defined(PSP2) || defined(RW_GL_USE_VAOS)
+ 	AttribDesc *a;
+ 	for(a = attribDescs; a != &attribDescs[numAttribs]; a++)
+ 		glDisableVertexAttribArray(a->index);
++#endif
+ }
+ 
+ void
 diff --git a/src/gl/gl3shader.cpp b/src/gl/gl3shader.cpp
-index f361dc8..c25575d 100644
+index f361dc8..1b6c53e 100644
 --- a/src/gl/gl3shader.cpp
 +++ b/src/gl/gl3shader.cpp
 @@ -12,6 +12,9 @@
@@ -106,6 +191,15 @@ index f361dc8..c25575d 100644
  
  namespace rw {
  namespace gl3 {
+@@ -26,7 +29,7 @@ static float uniformData[512*4];	// seems enough
+ static uint32 dataPtr;
+ 
+ static int uniformTypesize[] = {
+-	0, 4, 4, 16
++	0, 4, 4, 16, 1, 3
+ };
+ 
+ static char*
 @@ -123,12 +126,17 @@ setUniform(int32 id, void *data)
  void
  flushUniforms(void)
@@ -124,7 +218,20 @@ index f361dc8..c25575d 100644
  
  		int32 loc = currentShader->uniformLocations[i];
  		if(loc == -1)
-@@ -250,6 +258,9 @@ Shader::create(const char **vsrc, const char **fsrc)
+@@ -148,6 +156,12 @@ flushUniforms(void)
+ 			case UNIFORM_MAT4:
+ 				glUniformMatrix4fv(loc, u->num, GL_FALSE, (GLfloat*)u->data);
+ 				break;
++			case UNIFORM_FLOAT:
++				glUniform1fv(loc, u->num, (GLfloat*)u->data);
++				break;
++			case UNIFORM_VEC3:
++				glUniform3fv(loc, u->num, (GLfloat*)u->data);
++				break;
+ 			}
+ 		currentShader->serialNums[i] = u->serialNum;
+ 	}
+@@ -250,6 +264,9 @@ Shader::create(const char **vsrc, const char **fsrc)
  	int i;
  	int fail;
  
@@ -134,7 +241,7 @@ index f361dc8..c25575d 100644
  	fail = compileshader(GL_VERTEX_SHADER, vsrc, &vs);
  	if(fail)
  		return nil;
-@@ -267,6 +278,10 @@ Shader::create(const char **vsrc, const char **fsrc)
+@@ -267,6 +284,10 @@ Shader::create(const char **vsrc, const char **fsrc)
  	if(fail){
  		return nil;
  	}
@@ -145,7 +252,7 @@ index f361dc8..c25575d 100644
  
  	Shader *sh = rwNewT(Shader, 1, MEMDUR_EVENT | ID_DRIVER);	 // or global?
  
-@@ -310,10 +325,17 @@ Shader::create(const char **vsrc, const char **fsrc)
+@@ -310,10 +331,17 @@ Shader::create(const char **vsrc, const char **fsrc)
  	sh->numUniforms = uniformRegistry.numUniforms;
  	sh->uniformLocations = rwNewT(GLint, uniformRegistry.numUniforms, MEMDUR_EVENT | ID_DRIVER);
  	sh->serialNums = rwNewT(uint32, uniformRegistry.numUniforms, MEMDUR_EVENT | ID_DRIVER);
@@ -163,11 +270,37 @@ index f361dc8..c25575d 100644
  	}
  
  	// set samplers
+diff --git a/src/gl/rwgl3impl.h b/src/gl/rwgl3impl.h
+index 6718a60..6c0d14f 100644
+--- a/src/gl/rwgl3impl.h
++++ b/src/gl/rwgl3impl.h
+@@ -3,6 +3,10 @@ namespace gl3 {
+ 
+ #ifdef RW_OPENGL
+ 
++#if defined(PSP2) && !defined(RW_GL_USE_VAOS)
++void resetVertexInputState(void);
++#endif
++
+ extern uint32 im2DVbo, im2DIbo;
+ void openIm2D(void);
+ void closeIm2D(void);
 diff --git a/src/gl/rwgl3shader.h b/src/gl/rwgl3shader.h
-index 890f12b..a057342 100644
+index 890f12b..6ecb7e8 100644
 --- a/src/gl/rwgl3shader.h
 +++ b/src/gl/rwgl3shader.h
-@@ -53,6 +53,12 @@ struct Shader
+@@ -14,7 +14,9 @@ enum UniformType
+ 	UNIFORM_NA,	// managed by the user
+ 	UNIFORM_VEC4,
+ 	UNIFORM_IVEC4,
+-	UNIFORM_MAT4
++	UNIFORM_MAT4,
++	UNIFORM_FLOAT,
++	UNIFORM_VEC3
+ };
+ 
+ struct Uniform
+@@ -53,6 +55,12 @@ struct Shader
  	GLint *uniformLocations;
  	uint32 *serialNums;
  	int32 numUniforms;	// just to be sure!

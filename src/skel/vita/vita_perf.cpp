@@ -78,6 +78,10 @@ ReadSettings(void)
 			settings.glCounters = value != 0;
 	}
 	fclose(f);
+#ifdef RELCS_BENCHMARK
+	// Draw modes and flat textures live in the counting wrappers (gl_vita.cpp).
+	settings.glCounters = true;
+#endif
 }
 
 // ---- Allocation counters (-Wl,--wrap=malloc,... in vita/CMakeLists.txt) --------
@@ -85,6 +89,11 @@ ReadSettings(void)
 // Every thread; malloc/calloc/realloc/memalign and free, which includes C++ new
 // and delete. newlib's internal _malloc_r users (stdio buffers) are not seen.
 static std::atomic<uint32_t> allocCalls, allocBytes, freeCalls;
+#ifdef RELCS_BENCHMARK
+// Benchmark totals: the window counters are reset at each window start.
+static std::atomic<uint32_t> totalAllocCalls, totalAllocBytes, totalFreeCalls;
+static std::atomic<uint32_t> totalDiskReads, totalDiskBytes, totalDiskUs, totalSyncWaits, totalSyncUs;
+#endif
 
 extern "C" {
 void *__real_malloc(size_t size);
@@ -98,6 +107,10 @@ CountAlloc(size_t size)
 {
 	allocCalls.fetch_add(1, std::memory_order_relaxed);
 	allocBytes.fetch_add((uint32_t)size, std::memory_order_relaxed);
+#ifdef RELCS_BENCHMARK
+	totalAllocCalls.fetch_add(1, std::memory_order_relaxed);
+	totalAllocBytes.fetch_add((uint32_t)size, std::memory_order_relaxed);
+#endif
 }
 
 void *__wrap_malloc(size_t size) { CountAlloc(size); return __real_malloc(size); }
@@ -108,8 +121,12 @@ void *__wrap_memalign(size_t align, size_t size) { CountAlloc(size); return __re
 void
 __wrap_free(void *p)
 {
-	if(p)
+	if(p){
 		freeCalls.fetch_add(1, std::memory_order_relaxed);
+#ifdef RELCS_BENCHMARK
+		totalFreeCalls.fetch_add(1, std::memory_order_relaxed);
+#endif
+	}
 	__real_free(p);
 }
 }
@@ -136,6 +153,11 @@ VitaPerfDiskRead(uint32_t bytes, uint64_t us)
 	diskBytes.fetch_add(bytes, std::memory_order_relaxed);
 	diskUs.fetch_add((uint32_t)us, std::memory_order_relaxed);
 	AtomicMax(diskMaxUs, (uint32_t)us);
+#ifdef RELCS_BENCHMARK
+	totalDiskReads.fetch_add(1, std::memory_order_relaxed);
+	totalDiskBytes.fetch_add(bytes, std::memory_order_relaxed);
+	totalDiskUs.fetch_add((uint32_t)us, std::memory_order_relaxed);
+#endif
 }
 
 void
@@ -144,6 +166,10 @@ VitaPerfDiskSync(uint64_t us)
 	syncWaits.fetch_add(1, std::memory_order_relaxed);
 	syncUs.fetch_add((uint32_t)us, std::memory_order_relaxed);
 	AtomicMax(syncMaxUs, (uint32_t)us);
+#ifdef RELCS_BENCHMARK
+	totalSyncWaits.fetch_add(1, std::memory_order_relaxed);
+	totalSyncUs.fetch_add((uint32_t)us, std::memory_order_relaxed);
+#endif
 }
 
 void
@@ -241,6 +267,14 @@ VitaPerfGLReady(void)
 static bool firstGameFrameLogged;
 static uint64_t lastReport;
 static unsigned windowIndex;
+#ifdef RELCS_BENCHMARK
+static bool periodicReports = true;
+static const char *reportScene;	// set while VitaPerfSceneWindowEnd writes
+static bool skipSceneFrame;	// the frame that opened a scene window is not measured
+#define PERIODIC_REPORTS periodicReports
+#else
+#define PERIODIC_REPORTS true
+#endif
 
 // Idle in progress
 static bool inIdle, idleMenu;
@@ -340,7 +374,8 @@ StartWindow(uint64_t now)
 		poolMinFree[i] = (size_t)-1;
 	heapMaxUsed = 0;
 	sampleTime = 0;
-	SampleMemory(now);
+	if(PERIODIC_REPORTS)
+		SampleMemory(now);
 }
 
 static const char *
@@ -362,13 +397,21 @@ WriteReport(uint64_t now, bool partial)
 	workTimes.Summarise(&work, scratch);
 	latencies.Summarise(&latency, scratch);
 	unsigned n = intervals.Count();
+	const char *sceneKey = "", *sceneId = "";
+#ifdef RELCS_BENCHMARK
+	if(reportScene){
+		sceneKey = " scene=";
+		sceneId = reportScene;
+	}
+#endif
 
 	// Same first line as the stable build, over gameplay frames only
 	if(n)
 		printf("[VITA] %.1f fps, %.1f ms/frame, swap (GPU wait) %.1f ms/frame\n",
 		       1000.0 / frame.meanMs, frame.meanMs, swapSum / 1000.0 / n);
-	printf("[PERF] window=%u build=%s phase=game frames=%u intervals=%u secs=%.2f limit=%s partial=%d tail_ms=%.1f\n",
-	       windowIndex++, VITA_BUILD_ID, gameFrames, n, secs, LimitName(), partial, (now - lastGameEnd) / 1000.0);
+	printf("[PERF] window=%u build=%s phase=game frames=%u intervals=%u secs=%.2f limit=%s partial=%d tail_ms=%.1f%s%s\n",
+	       windowIndex++, VITA_BUILD_ID, gameFrames, n, secs, LimitName(), partial, (now - lastGameEnd) / 1000.0,
+	       sceneKey, sceneId);
 	if(n){
 		printf("[PERF] frame_ms mean=%.2f median=%.2f p95=%.2f p99=%.2f min=%.2f max=%.2f over33=%.1f%% over50=%.1f%% dropped=%u\n",
 		       frame.meanMs, frame.medianMs, frame.p95Ms, frame.p99Ms, frame.minMs, frame.maxMs,
@@ -416,6 +459,13 @@ WriteReport(uint64_t now, bool partial)
 	}
 	printf("\n");
 
+#ifdef RELCS_BENCHMARK
+	if(!periodicReports){
+		// Not sampled during the frames of the window: once, now.
+		VitaSampleMemoryNow();
+		sampleTime = 0;
+	}
+#endif
 	SampleMemory(now);
 	printf("[PERF] mem_mib heap_used_max=%.1f/%.0f", heapMaxUsed / 1048576.0,
 	       VitaGetPerformanceStats().heapTotal / 1048576.0);
@@ -515,11 +565,11 @@ VitaPerfSwapEnd(void)
 	}
 	DrainFlips();
 	// A swap outside Idle (loading screen between two Idles) ends the window.
-	if(windowStart)
+	if(PERIODIC_REPORTS && windowStart)
 		WriteReport(swapEnd, true);
 	static unsigned swapsSinceReport;
 	swapsSinceReport++;
-	if(swapEnd - lastReport >= settings.reportSeconds * 1000000ULL){
+	if(PERIODIC_REPORTS && swapEnd - lastReport >= settings.reportSeconds * 1000000ULL){
 		WriteHeartbeat(swapEnd, swapsSinceReport);
 		swapsSinceReport = 0;
 	}
@@ -530,6 +580,14 @@ VitaPerfIdleEnd(uint32_t gameTimeMs, bool paused)
 {
 	uint64_t now = VitaPerfNow();
 	bool gameplay = !idleMenu && idleSwaps == 1;
+#ifdef RELCS_BENCHMARK
+	// the benchmark opened its window mid-frame (possibly after a blocking
+	// load): like the benchmark's own records, the window starts after it
+	if(skipSceneFrame){
+		skipSceneFrame = false;
+		gameplay = false;
+	}
+#endif
 	for(uint32_t i = idleFirstSubmit; i != matcher.Submitted(); i++)
 		matcher.SetKind(i, gameplay ? VitaFlipMatcher::GAME : VitaFlipMatcher::OTHER);
 	inIdle = false;
@@ -544,7 +602,7 @@ VitaPerfIdleEnd(uint32_t gameTimeMs, bool paused)
 		havePrevious = false;
 		DrainFlips();
 		// A phase change ends the gameplay window
-		if(windowStart)
+		if(PERIODIC_REPORTS && windowStart)
 			WriteReport(now, true);
 		return;
 	}
@@ -595,10 +653,103 @@ VitaPerfIdleEnd(uint32_t gameTimeMs, bool paused)
 	prevPaused = paused;
 
 	DrainFlips();
-	SampleMemory(now);
-	if(now - windowStart >= settings.reportSeconds * 1000000ULL)
-		WriteReport(now, false);
+	if(PERIODIC_REPORTS){
+		SampleMemory(now);
+		if(now - windowStart >= settings.reportSeconds * 1000000ULL)
+			WriteReport(now, false);
+	}
 }
+
+// ---- Benchmark (vita_bench.cpp) ---------------------------------------------------
+
+#ifdef RELCS_BENCHMARK
+void
+VitaPerfSetPeriodicReports(bool on)
+{
+	periodicReports = on;
+}
+
+void
+VitaPerfSceneWindowBegin(void)
+{
+	// Frames, rates and baselines restart with StartWindow at the next gameplay
+	// frame. Section and GL totals of the kept frames are dropped here without
+	// printing; the frame in progress is dropped too (skipSceneFrame).
+	windowStart = 0;
+	skipSceneFrame = true;
+	pendingReportUs = 0;
+	excludedMenu = excludedLoad = excludedNoSwap = outsideSwaps = 0;
+	VitaProfReportSections(0);
+	VitaGLProfReset();
+}
+
+void
+VitaPerfSceneWindowEnd(const char *scene)
+{
+	// One token for the log parsers
+	char id[48];
+	int len = 0;
+	for(const char *c = scene ? scene : ""; *c && len < (int)sizeof(id) - 1; c++)
+		id[len++] = isspace((unsigned char)*c) || *c == '=' ? '_' : *c;
+	if(len == 0)
+		id[len++] = '-';
+	id[len] = '\0';
+
+	uint64_t now = VitaPerfNow();
+	DrainFlips();
+	if(windowStart == 0){
+		printf("[PERF] scene=%s: no gameplay frame, no window\n", id);
+		VitaFlushLog();
+		return;
+	}
+	reportScene = id;
+	WriteReport(now, true);
+	reportScene = nullptr;
+}
+
+int
+VitaPerfThreadCount(void)
+{
+	int n = numThreads.load();
+	return n < MAX_THREADS ? n : MAX_THREADS;
+}
+
+bool
+VitaPerfThreadRunTime(int i, const char **name, uint64_t *runUs)
+{
+	SceUInt64 run;
+	if(i < 0 || i >= VitaPerfThreadCount() || !ThreadRunTime(threads[i], &run))
+		return false;
+	*name = threads[i].name;
+	*runUs = run;
+	return true;
+}
+
+// 32-bit atomics widened to 64 bits: read far more often than they can wrap.
+static uint64_t
+Widen(uint64_t &total, uint32_t &last, const std::atomic<uint32_t> &value)
+{
+	uint32_t now = value.load(std::memory_order_relaxed);
+	total += (uint32_t)(now - last);
+	last = now;
+	return total;
+}
+
+void
+VitaPerfGetTotals(VitaPerfTotals *out)
+{
+	static uint64_t total[8];
+	static uint32_t last[8];
+	out->diskReads = Widen(total[0], last[0], totalDiskReads);
+	out->diskBytes = Widen(total[1], last[1], totalDiskBytes);
+	out->diskUs = Widen(total[2], last[2], totalDiskUs);
+	out->syncWaits = Widen(total[3], last[3], totalSyncWaits);
+	out->syncUs = Widen(total[4], last[4], totalSyncUs);
+	out->allocCalls = Widen(total[5], last[5], totalAllocCalls);
+	out->freeCalls = Widen(total[6], last[6], totalFreeCalls);
+	out->allocBytes = Widen(total[7], last[7], totalAllocBytes);
+}
+#endif
 
 // ---- Startup ----------------------------------------------------------------------
 

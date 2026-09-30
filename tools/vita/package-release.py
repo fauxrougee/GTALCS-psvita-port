@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 import struct
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
@@ -41,7 +42,17 @@ def main():
     p.add_argument('--version', required=True)
     p.add_argument('--intro', action='store_true')
     p.add_argument('--verify-only', action='store_true')
+    p.add_argument('--title-id', default='RELCS0001',
+                   help='TITLE_ID expected in param.sfo (benchmark: RLCSBENCH)')
+    p.add_argument('--sce-sys', type=Path, default=ROOT/'vita/sce_sys',
+                   help='LiveArea art directory (benchmark: vita/bench/sce_sys)')
     args = p.parse_args()
+    if not re.fullmatch(r'[A-Z0-9]{9}', args.title_id):
+        p.error('--title-id must be 9 characters A-Z/0-9')
+    sce_sys = args.sce_sys
+    if not sce_sys.is_absolute() and not sce_sys.is_dir() and (ROOT/sce_sys).is_dir():
+        sce_sys = ROOT/sce_sys
+    sce_sys = sce_sys.resolve()
     build = args.build_dir.resolve()
     package = build/'reLCS.vpk'
     files = {'eboot.bin': build/('intro.bin' if args.intro else 'game.bin'),
@@ -49,7 +60,7 @@ def main():
              'boot/loading.rgba.z': build/'loading.rgba.z'}
     for name in ['icon0.png', 'livearea/contents/bg.png', 'livearea/contents/startup.png',
                  'livearea/contents/template.xml']:
-        files['sce_sys/'+name] = ROOT/'vita/sce_sys'/name
+        files['sce_sys/'+name] = sce_sys/name
     if args.intro:
         files.update({'game.bin': build/'game.bin', 'boot/intro.vtm': build/'intro.vtm',
                       'licenses/lz4.txt': ROOT/'vita/launcher/lz4/LICENSE'})
@@ -73,13 +84,14 @@ def main():
             with z.open(name) as stream:
                 assert digest(stream) == expected, f'Packaged file differs: {name}'
         sfo = sfo_values(z.read('sce_sys/param.sfo'))
-        assert sfo['APP_VER'] == args.version and sfo['TITLE_ID'] == 'RELCS0001'
+        assert sfo['APP_VER'] == args.version and sfo['TITLE_ID'] == args.title_id, \
+            f"param.sfo: APP_VER={sfo['APP_VER']} TITLE_ID={sfo['TITLE_ID']}"
         assert sfo['ATTRIBUTE2'] == 12, 'Extended memory attribute missing'
         for name, width, height in [('sce_sys/icon0.png', 128, 128),
                                   ('sce_sys/livearea/contents/bg.png', 840, 500),
                                   ('sce_sys/livearea/contents/startup.png', 280, 158)]:
             assert struct.unpack('>IIBBBBB', z.read(name)[16:29]) == (width,height,8,3,0,0,0)
-    manifest = {'version': args.version, 'intro': args.intro,
+    manifest = {'version': args.version, 'title_id': args.title_id, 'intro': args.intro,
                 'vpk_bytes': package.stat().st_size, 'vpk_sha256': file_digest(package),
                 'files_sha256': hashes}
     if args.intro:
@@ -89,7 +101,8 @@ def main():
         manifest['movie'] = {key: movie[key] for key in ['frames', 'duration_seconds', 'audio_samples',
                                                        'source_sha256', 'rgba_sha256', 'audio_sha256']}
     (build/'release.json').write_text(json.dumps(manifest, indent=2)+'\n', encoding='utf-8')
-    print(f'PASS: {args.version}, {"full intro + audio" if args.intro else "direct launch"}, '
+    title = '' if args.title_id == 'RELCS0001' else f' {args.title_id}'
+    print(f'PASS: {args.version}{title}, {"full intro + audio" if args.intro else "direct launch"}, '
           f'matching executables, assets, memory flag and ZIP CRCs; {package.stat().st_size} bytes')
 
 

@@ -48,6 +48,9 @@
 #include "Population.h"
 #include "IniFile.h"
 #include "Zones.h"
+#ifdef RELCS_BENCHMARK
+#include "benchmark.h"
+#endif
 
 #include "crossplatform.h"
 
@@ -431,6 +434,10 @@ void LoadINIControllerSettings()
 
 void SaveINIControllerSettings()
 {
+#ifdef RELCS_BENCHMARK
+	if (!Bench::AllowSettingsSave())
+		return;
+#endif
 	for (int32 i = 0; i < MAX_CONTROLLERACTIONS; i++) {
 		char value[128] = { '\0' };
 
@@ -593,6 +600,11 @@ bool LoadINISettings()
 
 void SaveINISettings()
 {
+#ifdef RELCS_BENCHMARK
+	// Benchmark settings are forced in memory only: reLCS.ini stays untouched
+	if (!Bench::AllowSettingsSave())
+		return;
+#endif
 #ifdef IMPROVED_VIDEOMODE
 	StoreIni("VideoMode", "Width", FrontEndMenuManager.m_nPrefsWidth);
 	StoreIni("VideoMode", "Height", FrontEndMenuManager.m_nPrefsHeight);

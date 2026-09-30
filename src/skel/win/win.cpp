@@ -93,6 +93,9 @@ static psGlobalType PsGlobal;
 #include "PCSave.h"
 #include "AnimViewer.h"
 #include "MemoryMgr.h"
+#ifdef RELCS_BENCHMARK
+#include "benchmark.h"
+#endif
 
 #ifdef PS2_MENU
 #include "MemoryCard.h"
@@ -1028,6 +1031,10 @@ MainWndProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 
 			/* redraw window */
 
+#ifdef RELCS_BENCHMARK
+			// Benchmark frames only run between FrameBegin and FrameEnd
+			if (!Bench::Active())
+#endif
 			if (RwInitialised && gGameState == GS_PLAYING_GAME)
 			{
 				RsEventHandler(rsIDLE, (void *)TRUE);
@@ -1223,6 +1230,11 @@ MainWndProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 			}
 			
+#ifdef RELCS_BENCHMARK
+			// The benchmark owns pad input (Bench::AfterPadUpdate)
+			if (Bench::Active())
+				return 0L;
+#endif
 			CPad::GetPad(0)->Clear(false);
 			CPad::GetPad(1)->Clear(false);
 			
@@ -1309,6 +1321,11 @@ MainWndProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 		case WM_SETFOCUS:
 #endif
 		{
+#ifdef RELCS_BENCHMARK
+			// It would open the pause menu in the middle of an unattended run
+			if (Bench::Active())
+				break;
+#endif
 			CGame::InitAfterFocusLoss();
 			break;
 		}
@@ -1516,6 +1533,11 @@ psSelectDevice()
 			FrontEndMenuManager.m_nPrefsDepth = 32;
 			FrontEndMenuManager.m_nPrefsWindowed = 0;
 		}
+#ifdef RELCS_BENCHMARK
+		// Windowed, so that losing focus does not minimise or reset the device
+		if (Bench::Active())
+			FrontEndMenuManager.m_nPrefsWindowed = 1;
+#endif
 
 		// Find the videomode that best fits what we got from the settings file
 		RwInt32 bestFsMode = -1;
@@ -2070,6 +2092,12 @@ WinMain(HINSTANCE instance,
 		RsEventHandler(rsPREINITCOMMANDLINE, argv[i]);
 	}
 
+#ifdef RELCS_BENCHMARK
+	// Settings were loaded by psInitialize (rsINITIALIZE); Bench::Active() is
+	// only known now, and nothing has read the preferences in between
+	Bench::OnSettingsLoaded();
+#endif
+
 	/*
 	 * Create the window...
 	 */
@@ -2389,6 +2417,14 @@ WinMain(HINSTANCE instance,
 #ifdef PS2_MENU
 						gGameState = GS_INIT_PLAYING_GAME;
 #else
+#ifdef RELCS_BENCHMARK
+						if ( Bench::SkipFrontend() )
+						{
+							gGameState = GS_INIT_PLAYING_GAME;
+							TRACE("gGameState = GS_INIT_PLAYING_GAME;");
+							break;
+						}
+#endif
 						gGameState = GS_INIT_FRONTEND;
 						TRACE("gGameState = GS_INIT_FRONTEND;");
 #endif
@@ -2478,6 +2514,9 @@ WinMain(HINSTANCE instance,
 
 						FrontEndMenuManager.m_bGameNotLoaded = false;
 #endif
+#ifdef RELCS_BENCHMARK
+						Bench::OnGameInitialised();
+#endif
 						gGameState = GS_PLAYING_GAME;
 						TRACE("gGameState = GS_PLAYING_GAME;");
 						break;
@@ -2488,9 +2527,23 @@ WinMain(HINSTANCE instance,
 						float ms = (float)CTimer::GetCurrentTimeInCycles() / (float)CTimer::GetCyclesPerMillisecond();
 						if ( RwInitialised )
 						{
+#ifdef RELCS_BENCHMARK
+							// Uncapped: every loop runs a frame, whatever the limiter says
+							if (Bench::Active())
+							{
+								Bench::FrameBegin();
+								RsEventHandler(rsIDLE, (void *)TRUE);
+								Bench::FrameEnd();
+							}
+							else
+#endif
 							if (!FrontEndMenuManager.m_PrefsFrameLimiter || (1000.0f / (float)RsGlobal.maxFPS) < ms)
 								RsEventHandler(rsIDLE, (void *)TRUE);
 						}
+#ifdef RELCS_BENCHMARK
+						if (Bench::QuitRequested())
+							RsGlobal.quit = TRUE;
+#endif
 						break;
 					}
 				}

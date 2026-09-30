@@ -353,6 +353,8 @@ project "reLCS"
 
 	filter "platforms:win*"
 		files { addSrcFiles("src/skel/win") }
+		-- reLCS Benchmark, runs only with -benchmark (docs/BENCHMARK.md)
+		defines { "RELCS_BENCHMARK" }
 		includedirs { "src/skel/win" }
 		buildoptions { "/Zc:sizedDealloc-" }
 		linkoptions "/SAFESEH:NO"

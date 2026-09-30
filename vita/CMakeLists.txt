@@ -2,6 +2,7 @@
 #   cmake -S vita -B build-vita -G Ninja -DCMAKE_BUILD_TYPE=Release
 #   cmake --build build-vita
 # Produces reLCS.vpk. Game data goes in ux0:data/reLCS/.
+# -DVITA_BENCHMARK=ON (own build directory): the reLCS Benchmark app instead.
 cmake_minimum_required(VERSION 3.20)
 
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
@@ -17,12 +18,27 @@ include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
 
 set(VITA_APP_NAME "GTA Liberty City Stories")
 set(VITA_TITLEID  "RELCS0001")
-set(VITA_VERSION  "01.15")
+set(VITA_VERSION  "01.16")
 set(VITA_DATA_DIR "ux0:data/reLCS/")
 option(VITA_DETAILED_GL_PROFILE "Time every GL draw/state call (adds CPU overhead)" OFF)
 
 # Both executables are built from source in the same dependency graph.
 option(VITA_WITH_INTRO "Include the complete movie and isolated launcher" ON)
+# Separate "reLCS Benchmark" app (docs/BENCHMARK.md): same engine compiled with
+# RELCS_BENCHMARK, own TITLE_ID and LiveArea art, no intro. Configure it in its
+# own build directory (tools/vita/build.py --benchmark uses build/vita-bench).
+option(VITA_BENCHMARK "Standalone benchmark VPK (RELCS_BENCHMARK, TITLE_ID RLCSBENCH)" OFF)
+# LiveArea art, relative to this directory
+set(VITA_SCE_SYS sce_sys)
+if(VITA_BENCHMARK)
+	set(VITA_APP_NAME "reLCS Benchmark")
+	set(VITA_TITLEID  "RLCSBENCH")
+	set(VITA_SCE_SYS bench/sce_sys)
+	if(VITA_WITH_INTRO)
+		message(STATUS "VITA_BENCHMARK: the benchmark has no intro, VITA_WITH_INTRO forced OFF")
+		set(VITA_WITH_INTRO OFF CACHE BOOL "Include the complete movie and isolated launcher" FORCE)
+	endif()
+endif()
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -37,11 +53,13 @@ set(VITA_CPU_FLAGS -mcpu=cortex-a9 -mfpu=neon -mtune=cortex-a9)
 # ---- librw (OpenGL ES 2.0 via vitaGL, window/context through glfw_vita) ----
 # Vita fixes to the librw submodule (PSP2-guarded), applied unless already there.
 # --ignore-whitespace: the checkout may have CRLF line endings.
+# Anchor the working tree: an archive extracted inside another Git checkout
+# must patch its own librw, rather than silently skipping paths in a subfolder.
 set(LIBRW_PATCH "${CMAKE_CURRENT_SOURCE_DIR}/librw-psp2.patch")
-execute_process(COMMAND git apply --directory=vendor/librw --ignore-whitespace --reverse --check "${LIBRW_PATCH}"
+execute_process(COMMAND git "--work-tree=${ROOT}" apply --directory=vendor/librw --ignore-whitespace --reverse --check "${LIBRW_PATCH}"
 	WORKING_DIRECTORY "${ROOT}" RESULT_VARIABLE LIBRW_PATCHED OUTPUT_QUIET ERROR_QUIET)
 if(NOT LIBRW_PATCHED EQUAL 0)
-	execute_process(COMMAND git apply --directory=vendor/librw --ignore-whitespace "${LIBRW_PATCH}"
+	execute_process(COMMAND git "--work-tree=${ROOT}" apply --directory=vendor/librw --ignore-whitespace "${LIBRW_PATCH}"
 		WORKING_DIRECTORY "${ROOT}" RESULT_VARIABLE LIBRW_PATCH_RESULT)
 	if(NOT LIBRW_PATCH_RESULT EQUAL 0)
 		message(FATAL_ERROR "Could not apply ${LIBRW_PATCH} to ${LIBRW}")
@@ -99,11 +117,18 @@ if(VITA_GIT_DIRTY)
 	set(VITA_GIT_SHA "${VITA_GIT_SHA}+dirty")
 endif()
 string(TIMESTAMP VITA_CONFIGURE_TIME "%Y%m%d-%H%M")
+set(VITA_BUILD_ID "${VITA_VERSION}-${VITA_GIT_SHA}-${VITA_CONFIGURE_TIME}")
+if(VITA_BENCHMARK)
+	set(VITA_BUILD_ID "${VITA_BUILD_ID}-bench")
+endif()
 file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/vita_build_id.h"
-	CONTENT "#define VITA_BUILD_ID \"${VITA_VERSION}-${VITA_GIT_SHA}-${VITA_CONFIGURE_TIME}\"\n")
+	CONTENT "#define VITA_BUILD_ID \"${VITA_BUILD_ID}\"\n")
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_compile_definitions(${PROJECT_NAME} PRIVATE LIBRW AUDIO_OAL
 	VITA_DATA_DIR="${VITA_DATA_DIR}")
+if(VITA_BENCHMARK)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE RELCS_BENCHMARK)
+endif()
 if(VITA_DETAILED_GL_PROFILE)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE VITA_DETAILED_GL_PROFILE)
 endif()
@@ -162,21 +187,26 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 vita_create_self(game.bin ${PROJECT_NAME} UNSAFE)
+set(LOADING_ART_OPTIONS "")
+set(PACKAGE_OPTIONS "")
+if(VITA_BENCHMARK)
+	set(LOADING_ART_OPTIONS --source "${CMAKE_CURRENT_SOURCE_DIR}/${VITA_SCE_SYS}/livearea/contents/bg.png")
+	set(PACKAGE_OPTIONS --title-id "${VITA_TITLEID}" --sce-sys "${CMAKE_CURRENT_SOURCE_DIR}/${VITA_SCE_SYS}")
+endif()
 add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/loading.rgba.z"
 	COMMAND "${Python3_EXECUTABLE}" "${ROOT}/tools/vita/make-loading-art.py"
-		--output "${CMAKE_CURRENT_BINARY_DIR}/loading.rgba.z"
-	DEPENDS "${ROOT}/tools/vita/make-loading-art.py" sce_sys/livearea/contents/bg.png
+		--output "${CMAKE_CURRENT_BINARY_DIR}/loading.rgba.z" ${LOADING_ART_OPTIONS}
+	DEPENDS "${ROOT}/tools/vita/make-loading-art.py" ${VITA_SCE_SYS}/livearea/contents/bg.png
 	VERBATIM)
 set(PACKAGE_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/game.bin"
 	"${CMAKE_CURRENT_BINARY_DIR}/loading.rgba.z")
-set(PACKAGE_OPTIONS "")
 if(VITA_WITH_INTRO)
 	include("${CMAKE_CURRENT_SOURCE_DIR}/launcher/build.cmake")
 	list(APPEND PACKAGE_OPTIONS --intro)
 	list(APPEND PACKAGE_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/intro.bin"
 		"${CMAKE_CURRENT_BINARY_DIR}/intro.vtm" "${CMAKE_CURRENT_BINARY_DIR}/intro.json")
 endif()
-file(GLOB_RECURSE PACKAGE_ART CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/sce_sys/*")
+file(GLOB_RECURSE PACKAGE_ART CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${VITA_SCE_SYS}/*")
 # Keep the working release's extended memory budget. Python packaging also
 # handles Windows source/build paths containing spaces without shell splitting.
 add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/reLCS.vpk"

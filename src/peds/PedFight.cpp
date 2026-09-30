@@ -29,6 +29,15 @@
 uint16 nPlayerInComboMove;
 RpClump* flyingClumpTemp;
 
+// LCS orders MELEE1..3 before GROUNDKICK and the hit reactions (reVC had them
+// last): only the melee moves use the weapon's animation group. GROUNDKICK
+// is a standard animation; looking it up in a weapon group reads outside it.
+static bool
+IsMeleeFightMove(uint32 move)
+{
+	return move >= FIGHTMOVE_MELEE1 && move <= FIGHTMOVE_MELEE3;
+}
+
 FightMove tFightMoves[NUM_FIGHTMOVES] =
 {
 /*
@@ -1108,10 +1117,10 @@ CPed::StartFightAttack(uint8 buttonPressure)
 	m_fightButtonPressure = 0;
 
 	if (m_curFightMove > FIGHTMOVE_NULL && m_curFightMove != FIGHTMOVE_IDLE) {
-		animAssoc = CAnimManager::BlendAnimation(GetClump(), m_curFightMove < FIGHTMOVE_MELEE1 ? ASSOCGRP_STD : weaponInfo->m_AnimToPlay,
+		animAssoc = CAnimManager::BlendAnimation(GetClump(), !IsMeleeFightMove(m_curFightMove) ? ASSOCGRP_STD : weaponInfo->m_AnimToPlay,
 			tFightMoves[m_curFightMove].animId, 8.0f);
 
-		if (weaponInfo->m_AnimToPlay == ASSOCGRP_KNIFE && m_curFightMove >= FIGHTMOVE_MELEE1) {
+		if (weaponInfo->m_AnimToPlay == ASSOCGRP_KNIFE && IsMeleeFightMove(m_curFightMove)) {
 			switch (GetWeapon()->m_eWeaponType) {
 				case WEAPONTYPE_SCREWDRIVER:
 				case WEAPONTYPE_KNIFE:
@@ -1544,10 +1553,10 @@ CPed::Fight(void)
 
 		if (m_curFightMove != FIGHTMOVE_IDLE) {
 
-			animAssoc = CAnimManager::BlendAnimation(GetClump(), m_curFightMove < FIGHTMOVE_MELEE1 ? ASSOCGRP_STD : weaponInfo->m_AnimToPlay,
+			animAssoc = CAnimManager::BlendAnimation(GetClump(), !IsMeleeFightMove(m_curFightMove) ? ASSOCGRP_STD : weaponInfo->m_AnimToPlay,
 				tFightMoves[m_curFightMove].animId, 8.0f);
 
-			if (weaponInfo->m_AnimToPlay != ASSOCGRP_KNIFE || m_curFightMove < FIGHTMOVE_MELEE1) {
+			if (weaponInfo->m_AnimToPlay != ASSOCGRP_KNIFE || !IsMeleeFightMove(m_curFightMove)) {
 				animAssoc->speed = 0.8f;
 			} else {
 				switch (GetWeapon()->m_eWeaponType) {

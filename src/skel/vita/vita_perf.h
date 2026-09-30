@@ -56,4 +56,25 @@ void VitaPerfDiskQueued(int depth);
 // CStreaming::Update: pending requests and memory used against the budget.
 void VitaPerfStreaming(int requested, uint32_t memoryUsed, uint32_t memoryAvailable);
 
+#ifdef RELCS_BENCHMARK
+// reLCS Benchmark (vita_bench.cpp). Periodic windows, heartbeats and phase
+// change reports are on by default; off, a window only ends with
+// VitaPerfSceneWindowEnd and memory is not sampled during frames.
+void VitaPerfSetPeriodicReports(bool on);
+// Drops the window in progress; the next one starts at the next gameplay frame.
+void VitaPerfSceneWindowBegin(void);
+// Writes the window now (partial=1), " scene=<scene>" ending its window= line.
+void VitaPerfSceneWindowEnd(const char *scene);
+// Registered threads: name and run time in microseconds (false if not ready).
+int VitaPerfThreadCount(void);
+bool VitaPerfThreadRunTime(int i, const char **name, uint64_t *runUs);
+// Storage and allocation totals since startup, never reset by the windows.
+// Main thread only.
+struct VitaPerfTotals {
+	uint64_t diskReads, diskBytes, diskUs, syncWaits, syncUs;
+	uint64_t allocCalls, freeCalls, allocBytes;
+};
+void VitaPerfGetTotals(VitaPerfTotals *out);
+#endif
+
 #endif

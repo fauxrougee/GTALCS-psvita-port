@@ -35,6 +35,9 @@
 #include "FileLoader.h"
 #include "User.h"
 #include "sampman.h"
+#ifdef RELCS_BENCHMARK
+#include "benchmark.h"
+#endif
 
 // --LCS: changed a bit to have lcs feel, needs more work
 // Similar story to Hud.cpp:
@@ -3234,6 +3237,10 @@ CMenuManager::LoadSettings()
 void
 CMenuManager::SaveSettings()
 {
+#ifdef RELCS_BENCHMARK
+	if (!Bench::AllowSettingsSave())
+		return;
+#endif
 #ifndef LOAD_INI_SETTINGS
 	static char RubbishString[48] = "stuffmorestuffevenmorestuff                 etc";
 #ifdef BIND_VEHICLE_FIREWEAPON

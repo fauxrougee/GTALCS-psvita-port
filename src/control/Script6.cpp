@@ -39,6 +39,9 @@
 #include "Pickups.h"
 #include "Fluff.h"
 #include "CustomSoundTrack.h"
+#ifdef RELCS_BENCHMARK
+#include "benchmark.h"
+#endif
 
 // LCS: file done except TODOs
 
@@ -376,6 +379,11 @@ int8 CRunningScript::ProcessCommands1000To1099(int32 command)
 		uint32 oldIp = m_nIp;
 #endif
 		CollectParameters(&m_nIp, 1);
+#ifdef RELCS_BENCHMARK
+		// Parameter consumed, script pointer past the command: skip the launch
+		if (!Bench::MissionLaunchAllowed())
+			return 0;
+#endif
 
 		if (CTheScripts::NumberOfExclusiveMissionScripts > 0) {
 			if (GET_INTEGER_PARAM(0) < UINT16_MAX - 1)

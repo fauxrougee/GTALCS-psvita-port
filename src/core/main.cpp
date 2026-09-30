@@ -77,6 +77,7 @@
 #include "VarConsole.h"
 #include "vitaprof.h"
 #include "vitaperf.h"
+#include "benchmark.h"	// without RELCS_BENCHMARK: only BENCH_GATE(x) == (true)
 #ifdef USE_OUR_VERSIONING
 #include "GitSHA1.h"
 #endif
@@ -247,7 +248,8 @@ DoRWStuffStartOfFrame_Horizon(int16 TopRed, int16 TopGreen, int16 TopBlue, int16
 		return false;
 
 	TheCamera.m_viewMatrix.Update();
-	CClouds::RenderBackground(TopRed, TopGreen, TopBlue, BottomRed, BottomGreen, BottomBlue, Alpha);
+	if(BENCH_GATE(sky))
+		CClouds::RenderBackground(TopRed, TopGreen, TopBlue, BottomRed, BottomGreen, BottomBlue, Alpha);
 
 	return true;
 }
@@ -374,7 +376,13 @@ DoRWStuffEndOfFrame(void)
 	CDebug::DebugDisplayTextBuffer();
 	FlushObrsPrintfs();
 	RwCameraEndUpdate(Scene.camera);
+#ifdef RELCS_BENCHMARK
+	Bench::SwapBegin();
+#endif
 	RsCameraShowRaster(Scene.camera);
+#ifdef RELCS_BENCHMARK
+	Bench::SwapEnd();
+#endif
 #ifndef MASTER
 	char s[48];
 #ifdef THIS_IS_STUPID
@@ -1263,6 +1271,7 @@ if(gbRenderWorld0)
 	// CMattRenderer::ResetRenderStates
 	/// CRenderer::PreRender();	// has to be called before BeginUpdate because of cutscene shadows
 	VPERF_BEGIN("Scene.Reflections");
+if(BENCH_GATE(reflections))
 	CCoronas::RenderReflections();
 	VPERF_END("Scene.Reflections");
 	VPERF_BEGIN("Scene.World1Opaque");
@@ -1293,8 +1302,10 @@ RenderScene_new(void)
 {
 	PUSH_RENDERGROUP("RenderScene_new");
 	VPERF_BEGIN("Scene.Sky");
-	CClouds::Render();
-	DoRWRenderHorizon();
+	if(BENCH_GATE(sky)){
+		CClouds::Render();
+		DoRWRenderHorizon();
+	}
 	VPERF_END("Scene.Sky");
 
 	MattRenderScene();
@@ -1316,7 +1327,8 @@ RenderEffects_new(void)
 	// stupid to do this before the whole world is drawn!
 //	CShadows::RenderStaticShadows();
 	VPERF_BEGIN("FX.EnvMap");
-	CRenderer::GenerateEnvironmentMap();
+	if(BENCH_GATE(envMap))
+		CRenderer::GenerateEnvironmentMap();
 	VPERF_END("FX.EnvMap");
 //	CShadows::RenderStoredShadows();
 //	CSkidmarks::Render();
@@ -1347,32 +1359,43 @@ if(gbRenderVehicles)
 
 	// from above
 	VPERF_BEGIN("FX.Shadows");
-	CShadows::RenderStaticShadows();
-	CShadows::RenderStoredShadows();
+	if(BENCH_GATE(shadows)){
+		CShadows::RenderStaticShadows();
+		CShadows::RenderStoredShadows();
+	}
 	VPERF_END("FX.Shadows");
-	CSkidmarks::Render();
-	CRubbish::Render();
+	if(BENCH_GATE(fxMisc)){
+		CSkidmarks::Render();
+		CRubbish::Render();
 
-	CGlass::Render();
+		CGlass::Render();
+	}
 	// CMattRenderer::ResetRenderStates
 	DefinedState();
-	CCoronas::RenderSunReflection();
-	CWeather::RenderRainStreaks();
-	// CWeather::AddSnow
-	CWaterCannons::Render();
-	CAntennas::Render();
-	CSpecialFX::Render();
-	CRopes::Render();
+	if(BENCH_GATE(coronas))
+		CCoronas::RenderSunReflection();
+	if(BENCH_GATE(fxMisc)){
+		CWeather::RenderRainStreaks();
+		// CWeather::AddSnow
+		CWaterCannons::Render();
+		CAntennas::Render();
+		CSpecialFX::Render();
+		CRopes::Render();
+	}
 	VPERF_BEGIN("FX.Coronas");
-	CCoronas::Render();
+	if(BENCH_GATE(coronas))
+		CCoronas::Render();
 	VPERF_END("FX.Coronas");
 	VPERF_BEGIN("FX.Particles");
-	CParticle::Render();
+	if(BENCH_GATE(particles))
+		CParticle::Render();
 	VPERF_END("FX.Particles");
-	CPacManPickups::Render();
-	CWeaponEffects::Render();
-	CPointLights::RenderFogEffect();
-	CMovingThings::Render();
+	if(BENCH_GATE(fxMisc)){
+		CPacManPickups::Render();
+		CWeaponEffects::Render();
+		CPointLights::RenderFogEffect();
+		CMovingThings::Render();
+	}
 	CRenderer::RenderFirstPersonVehicle();
 	POP_RENDERGROUP();
 }
@@ -1555,6 +1578,9 @@ Render2dStuffAfterFade(void)
 	if (CDraw::FadeValue != 0)
 #endif
 	CHud::DrawAfterFade();
+#ifdef RELCS_BENCHMARK
+	Bench::Render2D();
+#endif
 	CFont::DrawFonts();
 	CCredits::Render();
 	POP_RENDERGROUP();
@@ -1564,6 +1590,9 @@ void
 Idle(void *arg)
 {
 	CTimer::Update();
+#ifdef RELCS_BENCHMARK
+	Bench::AfterTimerUpdate();
+#endif
 
 	tbInit();
 
@@ -1576,10 +1605,14 @@ Idle(void *arg)
 	tbStartTimer(0, "CGame::Process");
 	CGame::Process();
 	tbEndTimer("CGame::Process");
+#ifdef RELCS_BENCHMARK
+	Bench::AfterGameProcess();
+#endif
 	POP_MEMID();
 
 	tbStartTimer(0, "DMAudio.Service");
-	DMAudio.Service();
+	if(BENCH_GATE(audio))
+		DMAudio.Service();
 	tbEndTimer("DMAudio.Service");
 
 	if(CGame::bDemoMode && CTimer::GetTimeInMilliseconds() > (3*60 + 30)*1000 && !CCutsceneMgr::IsCutsceneProcessing()){
@@ -1626,6 +1659,11 @@ Idle(void *arg)
 #ifdef FIX_BUGS
 		RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void *)FALSE); // TODO: temp? this fixes OpenGL render but there should be a better place for this
 		// This has to be done BEFORE RwCameraBeginUpdate
+#ifdef RELCS_BENCHMARK
+		if(gBenchGates.farClip > 0.0f)
+			RwCameraSetFarClipPlane(Scene.camera, gBenchGates.farClip);
+		else
+#endif
 		RwCameraSetFarClipPlane(Scene.camera, CTimeCycle::GetFarClip());
 		RwCameraSetFogDistance(Scene.camera, CTimeCycle::GetFogStart());
 #endif
@@ -1634,7 +1672,8 @@ Idle(void *arg)
 		// Before the display scene begins, see GenerateEnvironmentMapBeforeFrame
 		if(gbNewRenderer){
 			VPROF_BEGIN("EnvMapBeforeFrame");
-			CRenderer::GenerateEnvironmentMapBeforeFrame();
+			if(BENCH_GATE(envMap))
+				CRenderer::GenerateEnvironmentMapBeforeFrame();
 			VPROF_END("EnvMapBeforeFrame");
 		}
 #endif
@@ -1650,10 +1689,19 @@ Idle(void *arg)
 				goto popret;
 		}
 		VPROF_END("StartOfFrame");
+#ifdef RELCS_BENCHMARK
+		// Paired with End3D below: no early exit in between
+		Bench::Begin3D();
+#endif
 
 		DefinedState();
 
 #ifndef FIX_BUGS
+#ifdef RELCS_BENCHMARK
+		if(gBenchGates.farClip > 0.0f)
+			RwCameraSetFarClipPlane(Scene.camera, gBenchGates.farClip);
+		else
+#endif
 		RwCameraSetFarClipPlane(Scene.camera, CTimeCycle::GetFarClip());
 		RwCameraSetFogDistance(Scene.camera, CTimeCycle::GetFogStart());
 #endif
@@ -1695,9 +1743,13 @@ Idle(void *arg)
 #endif
 
 		tbStartTimer(0, "RenderMotionBlur");
-		TheCamera.RenderMotionBlur();
+		if(BENCH_GATE(postfx))
+			TheCamera.RenderMotionBlur();
 		tbEndTimer("RenderMotionBlur");
 
+#ifdef RELCS_BENCHMARK
+		Bench::End3D();
+#endif
 		tbStartTimer(0, "Render2dStuff");
 		Render2dStuff();
 		tbEndTimer("Render2dStuff");

@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Check the librw patch in standalone and nested source folders
+        run: python3 tools/vita/check-librw-patch.py
       - name: Apply the reviewed librw patch
         run: git apply --directory=vendor/librw vita/librw-psp2.patch
       - name: Check accounting, renderer values and asynchronous logging
@@ -24,7 +26,12 @@ jobs:
           python3 tools/vita/check-perf-stats.py
           python3 tools/vita/check-perf-hooks.py
           python3 tools/vita/check-render-cache.py
+          python3 tools/vita/check-render-state.py
           python3 tools/vita/check-async-log.py
+      - name: Check the benchmark metrics and report tool
+        run: |
+          python3 tools/vita/check-bench-metrics.py
+          python3 tools/vita/check-bench-report.py
 
   build-vita:
     needs: host-tests
@@ -52,5 +59,32 @@ jobs:
         with:
           name: reLCS-PSVita-intro
           path: dist/*
+          if-no-files-found: error
+          compression-level: 0
+
+  build-vita-bench:
+    needs: host-tests
+    runs-on: ubuntu-24.04
+    container: vitasdk/vitasdk:2026.08-20260815
+    timeout-minutes: 30
+    env:
+      VDPM_NONINTERACTIVE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install host and target dependencies
+        run: |
+          apt-get update
+          apt-get install -y python3-venv ninja-build git build-essential
+          vdpm install zlib taihen kubridge libmathneon vitaShaRK SceShaccCgExt vitaGL openal-soft mpg123
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r tools/vita/requirements.txt
+      - name: Build the reLCS Benchmark app
+        run: .venv/bin/python tools/vita/build.py --benchmark --jobs 2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reLCS-PSVita-benchmark
+          path: dist/*benchmark*
           if-no-files-found: error
           compression-level: 0

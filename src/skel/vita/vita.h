@@ -32,5 +32,21 @@ void VitaProfDiscardFrame(void);
 // Cost of one begin/end pair in microseconds, measured once at startup.
 double VitaProfCalibrate(void);
 void VitaProfReportSections(int frames);
+// Sections of the frame in progress (read before commit/discard). Indices stay
+// valid for the whole session: the table only grows.
+int VitaProfSectionCount(void);
+const char *VitaProfSectionName(int i);
+int VitaProfSectionParent(int i);	// -1 at top level
+int VitaProfSectionDepth(int i);
+unsigned int VitaProfSectionFrameUs(int i);
+unsigned int VitaProfSectionFrameCalls(int i);
+
+#ifdef RELCS_BENCHMARK
+// VitaRecordPresentedFrame's heap/vitaGL pool sampling every 0.5 s (mallinfo
+// gets slower as the heap fragments). On by default; the benchmark turns it off.
+void VitaSetFrameSampling(bool on);
+// Refreshes the heap and pool figures of VitaGetPerformanceStats now.
+void VitaSampleMemoryNow(void);
+#endif
 
 #endif

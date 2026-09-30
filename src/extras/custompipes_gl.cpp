@@ -60,6 +60,46 @@ uploadSharedVec4(int32 id, float *value)
 #endif
 }
 
+static void
+uploadSharedFloat(int32 id, float value)
+{
+#ifdef PSP2
+	rw::gl3::setUniform(id, &value);
+#else
+	glUniform1f(rw::gl3::currentShader->uniformLocations[id], value);
+#endif
+}
+
+static void
+uploadSharedVec3(int32 id, float *value)
+{
+#ifdef PSP2
+	rw::gl3::setUniform(id, value);
+#else
+	glUniform3fv(rw::gl3::currentShader->uniformLocations[id], 1, value);
+#endif
+}
+
+static void
+uploadSharedVec4Array(int32 id, int32 count, float *value)
+{
+#ifdef PSP2
+	rw::gl3::setUniform(id, value);
+#else
+	glUniform4fv(rw::gl3::currentShader->uniformLocations[id], count, value);
+#endif
+}
+
+static int32
+registerSharedUniform(const char *name, rw::gl3::UniformType type, int32 count = 1)
+{
+#ifdef PSP2
+	return rw::gl3::registerUniform(name, type, count);
+#else
+	return rw::gl3::registerUniform(name);
+#endif
+}
+
 /*
  * Leeds & Neo Vehicle pipe
  */
@@ -162,7 +202,7 @@ leedsVehicleRenderCB(rw::Atomic *atomic, rw::gl3::InstanceDataHeader *header)
 			if(gGlassCarsCheat)
 				coef = 1.0f;
 		}
-		glUniform1f(U(u_shininess), coef);
+		uploadSharedFloat(u_shininess, coef);
 
 		setMaterial(m->color, m->surfaceProps);
 
@@ -231,8 +271,8 @@ leedsVehicleRenderCB_mobile(rw::Atomic *atomic, rw::gl3::InstanceDataHeader *hea
 	skyBot.green = CTimeCycle::GetSkyBottomGreen()/255.0f;
 	skyBot.blue = CTimeCycle::GetSkyBottomBlue()/255.0f;
 
-	glUniform3fv(U(u_skyTop), 1, (float*)&skyTop);
-	glUniform3fv(U(u_skyBot), 1, (float*)&skyBot);
+	uploadSharedVec3(u_skyTop, (float*)&skyTop);
+	uploadSharedVec3(u_skyBot, (float*)&skyBot);
 
 	setTexture(1, EnvMapTex);
 
@@ -247,7 +287,7 @@ leedsVehicleRenderCB_mobile(rw::Atomic *atomic, rw::gl3::InstanceDataHeader *hea
 			if(gGlassCarsCheat)
 				coef = 1.0f;
 		}
-		glUniform1f(U(u_shininess), coef);
+		uploadSharedFloat(u_shininess, coef);
 
 		setMaterial(m->color, m->surfaceProps);
 
@@ -290,8 +330,8 @@ uploadSpecLights(void)
 			dirs[1+i].power = power*2.0f;
 		}
 	}
-	glUniform4fv(U(u_specDir), 1 + NUMEXTRADIRECTIONALS, (float*)&dirs);
-	glUniform4fv(U(u_specColor), 1 + NUMEXTRADIRECTIONALS, (float*)&colors);
+	uploadSharedVec4Array(u_specDir, 1 + NUMEXTRADIRECTIONALS, (float*)&dirs);
+	uploadSharedVec4Array(u_specColor, 1 + NUMEXTRADIRECTIONALS, (float*)&colors);
 }
 
 static void
@@ -324,7 +364,7 @@ vehicleRenderCB(rw::Atomic *atomic, rw::gl3::InstanceDataHeader *header)
 	neoVehicleShader->use();
 
 	V3d eyePos = rw::engine->currentCamera->getFrame()->getLTM()->pos;
-	glUniform3fv(U(u_eye), 1, (float*)&eyePos);
+	uploadSharedVec3(u_eye, (float*)&eyePos);
 
 	uploadSpecLights();
 
@@ -347,7 +387,7 @@ vehicleRenderCB(rw::Atomic *atomic, rw::gl3::InstanceDataHeader *header)
 
 		reflProps[2] = m->surfaceProps.specular * VehicleShininess;
 		reflProps[3] = m->surfaceProps.specular == 0.0f ? 0.0f : VehicleSpecularity;
-		glUniform4fv(U(u_reflProps), 1, reflProps);
+		uploadSharedVec4(u_reflProps, reflProps);
 
 		drawInst(header, inst);
 		inst++;
@@ -442,6 +482,23 @@ DestroyVehiclePipe(void)
 
 rw::gl3::Shader *leedsWorldShader;
 rw::gl3::Shader *leedsWorldShader_mobile;
+#ifdef PSP2
+static rw::gl3::Shader *leedsWorldShader_noAT;
+static rw::gl3::Shader *leedsWorldShader_mobile_noAT;
+
+static void
+useWorldShader(void)
+{
+	bool mobile = WorldPipeSwitch == WORLDPIPE_MOBILE;
+	rw::gl3::Shader *shader = mobile ? leedsWorldShader_mobile : leedsWorldShader;
+	if(!rw::gl3::getAlphaTest()){
+		rw::gl3::Shader *opaque = mobile ? leedsWorldShader_mobile_noAT : leedsWorldShader_noAT;
+		if(opaque)
+			shader = opaque;
+	}
+	shader->use();
+}
+#endif
 
 static void
 worldRenderCB(rw::Atomic *atomic, rw::gl3::InstanceDataHeader *header)
@@ -487,6 +544,9 @@ worldRenderCB(rw::Atomic *atomic, rw::gl3::InstanceDataHeader *header)
 
 		rw::SetRenderState(VERTEXALPHA, inst->vertexAlpha || color.alpha != 0xFF);
 
+#ifdef PSP2
+		useWorldShader();
+#endif
 		drawInst(header, inst);
 		inst++;
 	}
@@ -515,6 +575,15 @@ CreateWorldPipe(void)
 	assert(leedsWorldShader);
 	leedsWorldShader_mobile = Shader::create(vs_mobile, fs);
 	assert(leedsWorldShader_mobile);
+#ifdef PSP2
+	// When alpha testing is disabled the original shader discards no pixels.
+	// Specialize that case so the GPU can omit discard and use early depth.
+	// The shader source/cache key includes this define; transparency still
+	// uses the original shader. Compilation failure falls back to that shader.
+	const char *fs_noAT[] = { shaderDecl, "#define NO_ALPHATEST\n", header_frag_src, scale_frag_src, nil };
+	leedsWorldShader_noAT = Shader::create(vs, fs_noAT);
+	leedsWorldShader_mobile_noAT = Shader::create(vs_mobile, fs_noAT);
+#endif
 	}
 
 
@@ -528,6 +597,14 @@ CreateWorldPipe(void)
 void
 DestroyWorldPipe(void)
 {
+#ifdef PSP2
+	if(leedsWorldShader_noAT)
+		leedsWorldShader_noAT->destroy();
+	leedsWorldShader_noAT = nil;
+	if(leedsWorldShader_mobile_noAT)
+		leedsWorldShader_mobile_noAT->destroy();
+	leedsWorldShader_mobile_noAT = nil;
+#endif
 	leedsWorldShader->destroy();
 	leedsWorldShader = nil;
 	leedsWorldShader_mobile->destroy();
@@ -566,8 +643,8 @@ glossRenderCB(rw::Atomic *atomic, rw::gl3::InstanceDataHeader *header)
 	neoGlossShader->use();
 
 	V3d eyePos = rw::engine->currentCamera->getFrame()->getLTM()->pos;
-	glUniform3fv(U(u_eye), 1, (float*)&eyePos);
-	glUniform4fv(U(u_reflProps), 1, (float*)&GlossMult);
+	uploadSharedVec3(u_eye, (float*)&eyePos);
+	uploadSharedVec4(u_reflProps, (float*)&GlossMult);
 
 	SetRenderState(VERTEXALPHA, TRUE);
 	SetRenderState(SRCBLEND, BLENDONE);
@@ -647,7 +724,7 @@ uploadRimData(bool enable)
 	using namespace rw::gl3;
 
 	V3d viewVec = rw::engine->currentCamera->getFrame()->getLTM()->at;
-	glUniform3fv(U(u_viewVec), 1, (float*)&viewVec);
+	uploadSharedVec3(u_viewVec, (float*)&viewVec);
 	float rimData[4];
 	rimData[0] = Offset.Get();
 	rimData[1] = Scale.Get();
@@ -656,11 +733,11 @@ uploadRimData(bool enable)
 	else
 		rimData[2] = 0.0f;
 	rimData[3] = 0.0f;
-	glUniform3fv(U(u_rimData), 1, rimData);
+	uploadSharedVec3(u_rimData, rimData);
 	Color col = RampStart.Get();
-	glUniform4fv(U(u_rampStart), 1, (float*)&col);
+	uploadSharedVec4(u_rampStart, (float*)&col);
 	col = RampEnd.Get();
-	glUniform4fv(U(u_rampEnd), 1, (float*)&col);
+	uploadSharedVec4(u_rampEnd, (float*)&col);
 }
 
 static void
@@ -814,17 +891,17 @@ DestroyRimLightPipes(void)
 void
 CustomPipeRegisterGL(void)
 {
-	u_viewVec = rw::gl3::registerUniform("u_viewVec");
-	u_rampStart = rw::gl3::registerUniform("u_rampStart");
-	u_rampEnd = rw::gl3::registerUniform("u_rampEnd");
-	u_rimData = rw::gl3::registerUniform("u_rimData");
+	u_viewVec = registerSharedUniform("u_viewVec", rw::gl3::UNIFORM_VEC3);
+	u_rampStart = registerSharedUniform("u_rampStart", rw::gl3::UNIFORM_VEC4);
+	u_rampEnd = registerSharedUniform("u_rampEnd", rw::gl3::UNIFORM_VEC4);
+	u_rimData = registerSharedUniform("u_rimData", rw::gl3::UNIFORM_VEC3);
 
 	u_lightMap = rw::gl3::registerUniform("u_lightMap");
 
-	u_eye = rw::gl3::registerUniform("u_eye");
-	u_reflProps = rw::gl3::registerUniform("u_reflProps");
-	u_specDir = rw::gl3::registerUniform("u_specDir");
-	u_specColor = rw::gl3::registerUniform("u_specColor");
+	u_eye = registerSharedUniform("u_eye", rw::gl3::UNIFORM_VEC3);
+	u_reflProps = registerSharedUniform("u_reflProps", rw::gl3::UNIFORM_VEC4);
+	u_specDir = registerSharedUniform("u_specDir", rw::gl3::UNIFORM_VEC4, 1 + NUMEXTRADIRECTIONALS);
+	u_specColor = registerSharedUniform("u_specColor", rw::gl3::UNIFORM_VEC4, 1 + NUMEXTRADIRECTIONALS);
 
 #ifdef PSP2
 	u_amb = rw::gl3::registerUniform("u_amb", rw::gl3::UNIFORM_VEC4);
@@ -837,10 +914,10 @@ CustomPipeRegisterGL(void)
 #endif
 
 	u_texMatrix = rw::gl3::registerUniform("u_texMatrix", rw::gl3::UNIFORM_MAT4);
-	u_shininess = rw::gl3::registerUniform("u_shininess");
+	u_shininess = registerSharedUniform("u_shininess", rw::gl3::UNIFORM_FLOAT);
 
-	u_skyTop = rw::gl3::registerUniform("u_skyTop");
-	u_skyBot = rw::gl3::registerUniform("u_skyBot");
+	u_skyTop = registerSharedUniform("u_skyTop", rw::gl3::UNIFORM_VEC3);
+	u_skyBot = registerSharedUniform("u_skyBot", rw::gl3::UNIFORM_VEC3);
 }
 
 
@@ -933,6 +1010,9 @@ AtomicFirstPass(RpAtomic *atomic, int pass)
 
 		setTexture(0, m->texture);
 
+#ifdef PSP2
+		CustomPipes::useWorldShader();
+#endif
 		drawInst(building->instHeader, inst);
 	}
 	teardownVertexInput(building->instHeader);
@@ -1001,6 +1081,9 @@ RenderBlendPass(int pass)
 
 			setTexture(0, m->texture);
 
+#ifdef PSP2
+			CustomPipes::useWorldShader();
+#endif
 			drawInst(building->instHeader, inst);
 		}
 		teardownVertexInput(building->instHeader);

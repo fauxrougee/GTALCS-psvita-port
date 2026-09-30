@@ -13,4 +13,9 @@ struct VitaLogStats {
 	bool running;
 };
 VitaLogStats VitaLogGetStats(void);
+#ifdef RELCS_BENCHMARK
+// Wakes the writer and waits until everything queued is on disk (benchmark,
+// between tests only). False on timeout.
+bool VitaLogWaitIdle(unsigned timeoutUs);
+#endif
 #endif

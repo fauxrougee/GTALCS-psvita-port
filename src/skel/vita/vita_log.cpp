@@ -17,6 +17,10 @@ unsigned head, used, peak;
 SceUID file = -1, mutex = -1, wake = -1, writer = -1;
 std::atomic<bool> running(false), stopping(false);
 std::atomic<uint32_t> dropped(0), truncated(0), errors(0), writeMaxUs(0);
+#ifdef RELCS_BENCHMARK
+unsigned batchesTaken;				// under the mutex
+std::atomic<unsigned> batchesWritten(0);	// by the writer, after each batch
+#endif
 
 // Never hold this mutex while formatting, writing, waiting for the disk or
 // joining the worker. All queue indices are protected by the same mutex.
@@ -55,6 +59,9 @@ unsigned TakeBatch()
 	memcpy(batch + first, queue, count - first);
 	head = (head + count) % CAPACITY;
 	used -= count;
+#ifdef RELCS_BENCHMARK
+	if(count) batchesTaken++;
+#endif
 	Unlock();
 	return count;
 }
@@ -81,6 +88,9 @@ int WriteThread(SceSize, void *)
 			uint32_t elapsed = uint32_t(sceKernelGetProcessTimeWide() - start);
 			if(elapsed > writeMaxUs.load(std::memory_order_relaxed))
 				writeMaxUs.store(elapsed, std::memory_order_relaxed);
+#ifdef RELCS_BENCHMARK
+			batchesWritten.fetch_add(1, std::memory_order_release);
+#endif
 		}
 		if(stopping.load(std::memory_order_acquire)) break;
 	}
@@ -146,6 +156,23 @@ void VitaLogShutdown(void)
 	// The process is exiting. Keep the small kernel objects alive for any late
 	// producers/destructors, rather than deleting a mutex they may still enter.
 }
+
+#ifdef RELCS_BENCHMARK
+bool VitaLogWaitIdle(unsigned timeoutUs)
+{
+	if(!running.load(std::memory_order_acquire)) return true;
+	const uint64_t start = sceKernelGetProcessTimeWide();
+	for(;;){
+		sceKernelSignalSema(wake, 1);
+		Lock();
+		const bool idle = used == 0 && batchesTaken == batchesWritten.load(std::memory_order_acquire);
+		Unlock();
+		if(idle) return true;
+		if(sceKernelGetProcessTimeWide() - start >= timeoutUs) return false;
+		sceKernelDelayThread(2000);
+	}
+}
+#endif
 
 VitaLogStats VitaLogGetStats(void)
 {

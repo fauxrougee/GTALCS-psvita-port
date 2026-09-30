@@ -12,6 +12,9 @@
 #include "platform.h"
 #include "main.h"
 #include "MemoryHeap.h"
+#ifdef RELCS_BENCHMARK
+#include "benchmark.h"
+#endif
 
 static RwBool               DefaultVideoMode = TRUE;
 
@@ -163,6 +166,10 @@ rsPreInitCommandLine(RwChar *arg)
 
 		return TRUE;
 	}
+#endif
+#ifdef RELCS_BENCHMARK
+	if (Bench::PreInitCommandLine(arg))
+		return TRUE;
 #endif
 	return FALSE;
 }

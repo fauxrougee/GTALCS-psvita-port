@@ -31,7 +31,9 @@ def main():
     gitlinks = {entry.split('\t',1)[1]: entry.split()[1]
                 for entry in git('ls-files','--stage','-z').decode().split('\0')
                 if entry.startswith('160000 ')}
-    manifest = {'version': version, 'vendor_revisions': {}, 'sha256': {}}
+    previous = ROOT/'SOURCE-MANIFEST.json'
+    revisions = json.loads(previous.read_text()).get('vendor_revisions', {}) if previous.is_file() else {}
+    manifest = {'version': version, 'vendor_revisions': revisions, 'sha256': {}}
     with ZipFile(target, 'w', ZIP_DEFLATED, compresslevel=6) as z:
         def add(name, data):
             path = Path(name)
@@ -45,6 +47,8 @@ def main():
         for name in sorted(names):
             if not name or name in {'.gitmodules', 'SOURCE-MANIFEST.json'}:
                 continue  # vendor sources are embedded; the manifest is regenerated
+            if name.startswith('vita/benchmark/'):
+                continue  # console results and logs are local diagnostic inputs
             path=ROOT/name
             if path.is_file():
                 add(name,path.read_bytes())

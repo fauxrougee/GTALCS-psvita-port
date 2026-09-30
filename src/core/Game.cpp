@@ -94,6 +94,9 @@
 #include "screendroplets.h"
 #include "VarConsole.h"
 #include "vitaprof.h"
+#ifdef RELCS_BENCHMARK
+#include "benchmark.h"
+#endif
 #ifdef USE_TEXTURE_POOL
 #include "TexturePools.h"
 #endif
@@ -568,6 +571,9 @@ bool CGame::Initialise(const char* datFile)
 #endif
 	{
 		CTheScripts::StartTestScript();
+#ifdef RELCS_BENCHMARK
+		if (Bench::ScriptsEnabled())
+#endif
 		CTheScripts::Process();
 		TheCamera.Process();
 	}
@@ -730,6 +736,9 @@ bool CGame::ReInitGameObjectVariables(bool load)
 	{
 		CCranes::InitCranes();
 		CTheScripts::StartTestScript();
+#ifdef RELCS_BENCHMARK
+		if (Bench::ScriptsEnabled())
+#endif
 		CTheScripts::Process();
 		TheCamera.Process();
 		CFerry::InitFerrys();
@@ -858,6 +867,9 @@ void CGame::Process(void)
 {
 	if (FrontEndMenuManager.m_bWantToLoad) {
 		CTheScripts::StartTestScript();
+#ifdef RELCS_BENCHMARK
+		if (Bench::ScriptsEnabled())
+#endif
 		CTheScripts::Process();
 		TheCamera.Process();
 		CStreaming::LoadScene(TheCamera.GetPosition());
@@ -871,6 +883,9 @@ void CGame::Process(void)
 		FrontEndMenuManager.m_bWantToLoad = false;
 	}
 	CPad::UpdatePads();
+#ifdef RELCS_BENCHMARK
+	Bench::AfterPadUpdate();
+#endif
 #ifdef USE_CUSTOM_ALLOCATOR
 	ProcessTidyUpMemory();
 #endif
@@ -918,6 +933,9 @@ void CGame::Process(void)
 
 		PUSH_MEMID(MEMID_SCRIPT);
 		VPROF_BEGIN("TheScripts::Process");
+#ifdef RELCS_BENCHMARK
+		if (Bench::ScriptsEnabled())
+#endif
 		CTheScripts::Process();
 		VPROF_END("TheScripts::Process");
 		POP_MEMID();
@@ -975,6 +993,9 @@ void CGame::Process(void)
 		CTimeCycle::Update();
 		if (CReplay::ShouldStandardCameraBeProcessed())
 			TheCamera.Process();
+#ifdef RELCS_BENCHMARK
+		Bench::AfterCameraProcess();
+#endif
 		CCullZones::Update();
 		if (!CReplay::IsPlayingBack())
 			CGameLogic::Update();

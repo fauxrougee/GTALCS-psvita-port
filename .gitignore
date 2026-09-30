@@ -370,6 +370,7 @@ tools/vita/*.log
 vita/reLCS.elf
 vita/*.psp2dmp
 vita/log.txt
+vita/benchmark/
 vita/reLCS-*.vpk
 vita/reLCS-*.elf
 vita/boot-preview.png

@@ -54,6 +54,9 @@ long _dwOperatingSystemVersion;
 #include "AnimViewer.h"
 #include "Font.h"
 #include "MemoryMgr.h"
+#ifdef RELCS_BENCHMARK
+#include "benchmark.h"
+#endif
 
 // This is defined on project-level, via premake5 or cmake
 #ifdef GET_KEYBOARD_INPUT_FROM_X11
@@ -848,6 +851,12 @@ psSelectDevice()
 			FrontEndMenuManager.m_nPrefsDepth = 32;
 			FrontEndMenuManager.m_nPrefsWindowed = 0;
 		}
+#if defined RELCS_BENCHMARK && !defined PSP2
+		// Windowed, so that losing focus does not iconify the window (the Vita
+		// only has its exclusive 960x544 mode)
+		if (Bench::Active())
+			FrontEndMenuManager.m_nPrefsWindowed = 1;
+#endif
 
 		// Find the videomode that best fits what we got from the settings file
 		RwInt32 bestFsMode = -1;
@@ -1405,6 +1414,10 @@ void resizeCB(GLFWwindow* window, int width, int height) {
 	*/
 	/* redraw window */
 
+#ifdef RELCS_BENCHMARK
+	// Benchmark frames only run between FrameBegin and FrameEnd
+	if (!Bench::Active())
+#endif
 	if (RwInitialised && gGameState == GS_PLAYING_GAME)
 	{
 		RsEventHandler(rsIDLE, (void *)TRUE);
@@ -1963,6 +1976,12 @@ main(int argc, char *argv[])
 		RsEventHandler(rsPREINITCOMMANDLINE, argv[i]);
 	}
 
+#ifdef RELCS_BENCHMARK
+	// Settings were loaded by psInitialize (rsINITIALIZE); Bench::Active() is
+	// only known now, and nothing has read the preferences in between
+	Bench::OnSettingsLoaded();
+#endif
+
 	/*
 	 * Parameters to be used in RwEngineOpen / rsRWINITIALISE event
 	 */
@@ -2246,6 +2265,14 @@ main(int argc, char *argv[])
 #ifdef PS2_MENU
 						gGameState = GS_INIT_PLAYING_GAME;
 #else
+#ifdef RELCS_BENCHMARK
+						if ( Bench::SkipFrontend() )
+						{
+							gGameState = GS_INIT_PLAYING_GAME;
+							TRACE("gGameState = GS_INIT_PLAYING_GAME;");
+							break;
+						}
+#endif
 						gGameState = GS_INIT_FRONTEND;
 						TRACE("gGameState = GS_INIT_FRONTEND;");
 #endif
@@ -2332,6 +2359,9 @@ main(int argc, char *argv[])
 
 						FrontEndMenuManager.m_bGameNotLoaded = false;
 #endif
+#ifdef RELCS_BENCHMARK
+						Bench::OnGameInitialised();
+#endif
 						gGameState = GS_PLAYING_GAME;
 						TRACE("gGameState = GS_PLAYING_GAME;");
 						break;
@@ -2348,14 +2378,35 @@ main(int argc, char *argv[])
 							if (VitaPerfFrameDue(FrontEndMenuManager.m_PrefsFrameLimiter, FrontEndMenuManager.m_PrefsVsync, ms, RsGlobal.maxFPS))
 							{
 								VitaPerfIdleBegin(FrontEndMenuManager.m_bMenuActive);
+#ifdef RELCS_BENCHMARK
+								Bench::FrameBegin();
+#endif
 								RsEventHandler(rsIDLE, (void *)TRUE);
+#ifdef RELCS_BENCHMARK
+								// Before VitaPerfIdleEnd: it commits or drops the frame's sections
+								Bench::FrameEnd();
+#endif
 								VitaPerfIdleEnd(CTimer::GetTimeInMilliseconds(), CTimer::GetIsPaused());
 							}
 #else
+#ifdef RELCS_BENCHMARK
+							// Uncapped: every loop runs a frame, whatever the limiter says
+							if (Bench::Active())
+							{
+								Bench::FrameBegin();
+								RsEventHandler(rsIDLE, (void *)TRUE);
+								Bench::FrameEnd();
+							}
+							else
+#endif
 							if (!FrontEndMenuManager.m_PrefsFrameLimiter || (1000.0f / (float)RsGlobal.maxFPS) < ms)
 								RsEventHandler(rsIDLE, (void *)TRUE);
 #endif
 						}
+#ifdef RELCS_BENCHMARK
+						if (Bench::QuitRequested())
+							RsGlobal.quit = TRUE;
+#endif
 						break;
 					}
 				}
