@@ -15,6 +15,7 @@ long _dwOperatingSystemVersion;
 #ifdef PSP2
 #include "vita.h"
 #include "vita_perf.h"
+#include <psp2/io/stat.h>
 #elif !defined(__SWITCH__)
 #ifndef __APPLE__
 #include <sys/sysinfo.h>
@@ -124,6 +125,23 @@ void _psCreateFolder(const char *path)
 		CreateDirectory(path, nil);
 	else
 		CloseHandle(hfle);
+#elif defined PSP2
+	// sceIo paths are absolute and do not use newlib's working directory.
+	// realpath cannot resolve a directory that has not been created yet.
+	char fullpath[PATH_MAX];
+	const int length = snprintf(fullpath, sizeof(fullpath), "%s%s", VITA_DATA_DIR, path);
+	if (length < 0 || length >= (int)sizeof(fullpath)) {
+		printf("[SAVE] User folder path is too long: %s\n", path);
+		return;
+	}
+	for (char *p = fullpath; *p; ++p)
+		if (*p == '\\') *p = '/';
+	const int result = sceIoMkdir(fullpath, 0777);
+	if (result < 0) {
+		SceIoStat info;
+		if (sceIoGetstat(fullpath, &info) < 0 || !SCE_S_ISDIR(info.st_mode))
+			printf("[SAVE] Cannot create user folder %s (0x%08x)\n", fullpath, (unsigned int)result);
+	}
 #else
 	struct stat info;
 	char fullpath[PATH_MAX];

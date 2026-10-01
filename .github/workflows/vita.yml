@@ -28,6 +28,8 @@ jobs:
           python3 tools/vita/check-render-cache.py
           python3 tools/vita/check-render-state.py
           python3 tools/vita/check-async-log.py
+      - name: Check Vita save paths and failure reporting
+        run: python3 tools/vita/check-save-paths.py
       - name: Check the benchmark metrics and report tool
         run: |
           python3 tools/vita/check-bench-metrics.py

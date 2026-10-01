@@ -11,6 +11,7 @@
 #include "Messages.h"
 #include "PCSave.h"
 #include "Text.h"
+#include <errno.h>
 
 const char* _psGetUserFilesFolder();
 
@@ -19,7 +20,11 @@ C_PcSave PcSaveHelper;
 void
 C_PcSave::SetSaveDirectory(const char *path)
 {
+#ifdef PSP2
+	sprintf(DefaultPCSaveFileName, "%s/%s", path, "GTAVCsf");
+#else
 	sprintf(DefaultPCSaveFileName, "%s\\%s", path, "GTAVCsf");
+#endif
 }
 
 bool
@@ -50,16 +55,24 @@ C_PcSave::SaveSlot(int32 slot)
 		if (!IsQuickSave)
 #endif
 			DoGameSpecificStuffBeforeSave();
-		if (GenericSave(file)) {
-			if (!!CFileMgr::CloseFile(file))
-				nErrorCode = SAVESTATUS_ERR_SAVE_CLOSE;
-			return 0;
+		const bool saved = GenericSave(file);
+		const int closeResult = CFileMgr::CloseFile(file);
+		if (!saved) {
+			if (nErrorCode == SAVESTATUS_SUCCESSFUL)
+				nErrorCode = SAVESTATUS_ERR_SAVE_WRITE;
+			printf("[SAVE] Failed to write %s (status=%d)\n", ValidSaveName, (int)nErrorCode);
+			return 2;
 		}
-
-		return 2;
+		if (closeResult != 0) {
+			nErrorCode = SAVESTATUS_ERR_SAVE_CLOSE;
+			printf("[SAVE] Failed to close %s (errno=%d)\n", ValidSaveName, errno);
+			return 2;
+		}
+		return 0;
 	}
 	PcSaveHelper.nErrorCode = SAVESTATUS_ERR_SAVE_CREATE;
-	return false;
+	printf("[SAVE] Cannot open %s for writing (errno=%d)\n", ValidSaveName, errno);
+	return 1;
 }
 
 bool

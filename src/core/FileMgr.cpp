@@ -7,6 +7,9 @@
 #include "crossplatform.h"
 
 #include "FileMgr.h"
+#ifdef PSP2
+#include "vita.h"
+#endif
 
 const char *_psGetUserFilesFolder();
 
@@ -189,8 +192,8 @@ myfseek(int fd, long offset, int whence)
 static int
 myfeof(int fd)
 {
-	return feof(myfiles[fd].file);
-//	return ferror(myfiles[fd].file);
+	// Keep EOF detection for readers and also report failed writes.
+	return feof(myfiles[fd].file) || ferror(myfiles[fd].file);
 }
 
 
@@ -237,7 +240,15 @@ void
 CFileMgr::SetDirMyDocuments(void)
 {
 	SetDir("");	// better start at the root if user directory is relative
+#ifdef PSP2
+	// Saves already include userfiles/ in their names. Keep relative game and
+	// settings paths at the data root, including after the folder is created.
+	_psGetUserFilesFolder();
+	if (chdir(VITA_DATA_DIR) != 0)
+		printf("[SAVE] Cannot restore data directory %s (errno=%d)\n", VITA_DATA_DIR, errno);
+#else
 	mychdir(_psGetUserFilesFolder());
+#endif
 }
 
 ssize_t

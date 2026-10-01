@@ -268,13 +268,11 @@ GenericSave(int file)
 		}
 	}
 	
-	// Write checksum and close
+	// SaveSlot owns the file and closes it on both success and failure.
+	// Write the final checksum.
 	CFileMgr::Write(file, (const char *) &CheckSum, sizeof(CheckSum));
 	if (CFileMgr::GetErrorReadWrite(file)) {
 		PcSaveHelper.nErrorCode = SAVESTATUS_ERR_SAVE_WRITE;
-		if (!CloseFile(file))
-			PcSaveHelper.nErrorCode = SAVESTATUS_ERR_SAVE_CLOSE;
-
 		return false;
 	}
 

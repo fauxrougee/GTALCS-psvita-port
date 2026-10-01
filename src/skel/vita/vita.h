@@ -2,6 +2,10 @@
 
 #ifdef PSP2
 
+#ifndef VITA_DATA_DIR
+#define VITA_DATA_DIR "ux0:data/reLCS/"
+#endif
+
 // Called first thing in main(): clocks, working directory (VITA_DATA_DIR), log file.
 void VitaInit(void);
 void VitaFlushLog(void);
