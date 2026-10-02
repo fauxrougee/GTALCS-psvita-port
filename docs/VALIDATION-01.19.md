@@ -1,8 +1,8 @@
 # 01.19: LiveArea updater
 
-Status: locally compiled and checked; **not yet published or validated by
-installing an update on a physical Vita**. The latest public release remains
-01.18.
+Status: released with native build and host checks complete. **Installing an
+update and displaying the native notification on a physical Vita still need
+validation.**
 
 ## Change
 
@@ -89,4 +89,5 @@ can mount the updated game again.
 
 Publishing the new VPK alone does not activate in-console updates. The
 matching `update.txt` must be an asset of the same tested public **latest**
-release. No public metadata or release was changed during these local checks.
+release. The 01.19 release includes this metadata; subsequent releases must
+publish their own matching file.

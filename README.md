@@ -62,7 +62,7 @@ Check that `gta3.img` is at **`ux0:data/reLCS/models/gta3.img`**. An extra folde
 
 ### 3. Install the VPK
 
-Download [**reLCS 01.18 with the full intro**](https://github.com/fauxrougee/GTALCS-psvita-port/releases/download/v01.18/reLCS-01.18-intro-complete.vpk) (163 MB).
+Download [**reLCS 01.19 with the full intro**](https://github.com/fauxrougee/GTALCS-psvita-port/releases/download/v01.19/reLCS-01.19-intro-complete.vpk) (166 MB).
 
 Copy the `.vpk` to your Vita, open it in VitaShell, and install it. The ZIP files labeled *Source code* on the release page are for developers.
 
@@ -72,13 +72,13 @@ Open the **GTA Liberty City Stories** bubble and select **START**. You can skip 
 
 ## Updating
 
-Install the new VPK over the existing version. Keep `ux0:data/reLCS/` in place, including your saves. Working game data does not need to be converted again for 01.18.
+Install the new VPK over the existing version. Keep `ux0:data/reLCS/` in place, including your saves. Working game data does not need to be converted again for 01.19.
 
 Version 01.18 fixes D-pad left during gameplay and restores its missing binding in older settings automatically. There is no need to delete your settings files. Existing custom bindings are kept.
 
 Version 01.17 creates the `userfiles` folder automatically and reports failed saves correctly. Existing saves keep the same filenames and format. A save that 01.16 reported as successful without creating a file cannot be recovered.
 
-The upcoming **01.19** build adds an **UPDATE** tile to the game's LiveArea.
+Version **01.19** adds an **UPDATE** tile to the game's LiveArea.
 Close the game, then select it to open **GTA LCS Update**. It is part of the
 game and opens only through this tile; there is no additional home-screen
 bubble or plugin. It checks the latest compatible GitHub release, asks before
@@ -97,8 +97,8 @@ launch the updated version. If you installed the earlier test build's
 separate **GTA LCS Update** bubble, you can delete that bubble; keep the game.
 
 Install the first version with this feature through VitaShell. Subsequent
-compatible releases can be installed from the LiveArea. This feature is
-still awaiting a complete console test; 01.18 remains the published release.
+compatible releases can be installed from the LiveArea. Automatic checking
+and installation passed host tests; a complete console test is still pending.
 If an update fails, attach `ux0:data/reLCS/update.log`. The
 [updater notes](vita/updater/README.md) explain how releases are prepared.
 
@@ -106,7 +106,7 @@ If an update fails, attach `ux0:data/reLCS/update.log`. The
 
 For cheat codes, use the LCS PSP or PS2 combinations with **L/R** in place of
 **L1/R1**. See the [Vita cheat guide](docs/CHEATS.md) for examples and supported
-effects in the upcoming 01.19 build.
+effects in 01.19.
 
 <details>
 <summary><strong>The intro plays, but the game does not reach the menu</strong></summary>
