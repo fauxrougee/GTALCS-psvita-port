@@ -35,6 +35,7 @@ static bool glInitialised;
 
 static GLFWgamepadstate padState;
 static unsigned int cheatButtons;
+static bool suppressInput;
 static unsigned char joyButtons[GLFW_GAMEPAD_BUTTON_LAST + 1];
 static float joyAxes[GLFW_GAMEPAD_AXIS_LAST + 1];
 
@@ -80,6 +81,11 @@ UpdatePad(void)
 	ReadTouchHalves(SCE_TOUCH_PORT_FRONT, FRONT_TOUCH_WIDTH, &frontL, &frontR);
 
 	unsigned int b = ctrl.buttons;
+	if(suppressInput) {
+		if(!b && !rearL && !rearR && !frontL && !frontR) suppressInput=false;
+		b=0; rearL=rearR=frontL=frontR=false;
+		ctrl.lx=ctrl.ly=ctrl.rx=ctrl.ry=128;
+	}
 	// Cheats use the PSP layout and must not inherit action remapping or touch.
 	cheatButtons = 0;
 	const struct { unsigned int hardware, cheat; } masks[] = {
@@ -122,6 +128,7 @@ UpdatePad(void)
 }
 
 unsigned int VitaGetCheatButtons(void) { return cheatButtons; }
+void VitaSuppressInputUntilRelease(void) { suppressInput=true; UpdatePad(); }
 
 extern "C" {
 

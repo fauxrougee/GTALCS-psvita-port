@@ -75,6 +75,7 @@ int sceTouchPeek(SceTouchPortType,SceTouchData *p,int) { p->reportNum=0; return 
 #define REAR_TOUCH_WIDTH 1920
 GLFWgamepadstate padState={};
 unsigned int cheatButtons;
+bool suppressInput;
 unsigned char joyButtons[GLFW_GAMEPAD_BUTTON_LAST+1];
 float joyAxes[GLFW_GAMEPAD_AXIS_LAST+1];
 '''
@@ -173,6 +174,14 @@ void legacy(unsigned initialized,bool customLeft) {
 }
 #endif
 int main() {
+    // Dismissing a native dialog must not confirm a menu item or type a cheat.
+    suppressInput=true; input.buttons=SCE_CTRL_CROSS|SCE_CTRL_LTRIGGER; UpdatePad();
+    assert(cheatButtons==0 && padState.buttons[GLFW_GAMEPAD_BUTTON_A]==0);
+    assert(padState.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER]==-1.0f);
+    input.buttons=0; UpdatePad(); assert(!suppressInput && cheatButtons==0);
+    input.buttons=SCE_CTRL_CROSS; UpdatePad();
+    assert(cheatButtons==PadCheats::Cross && padState.buttons[GLFW_GAMEPAD_BUTTON_A]==1);
+    input.buttons=0; UpdatePad();
     int count=0; glfwGetJoystickButtons(GLFW_JOYSTICK_1,&count);
     assert(count==15); // Physical GLFW arrays must retain their real length.
     fresh(count); fresh(16);

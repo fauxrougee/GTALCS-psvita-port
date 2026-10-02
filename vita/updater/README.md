@@ -21,6 +21,16 @@ The new build does not create it again. Do not delete the game bubble.
 
 ## Download and install
 
+The engine also makes one silent background check during loading. It uses an
+existing Wi-Fi connection, verified HTTPS, a 4 KiB metadata limit and a
+six-second request timeout. Network resources are released after the check.
+A newer compatible release triggers a native OK dialog at the main menu,
+or the next pause menu if the check finishes after starting a game. The
+message follows the console language (French or English) and points to the
+LiveArea UPDATE tile. Offline, failed and up-to-date checks show no dialog.
+Confirmation input is held back until released, so it cannot select a menu
+item. This check neither opens the updater nor downloads a VPK.
+
 Updates use the public GitHub release asset `update.txt`. The updater compares
 the installed game's SFO version against that manifest. Older and equal
 versions are not installed. The download URL must identify the complete VPK

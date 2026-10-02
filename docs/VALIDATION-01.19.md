@@ -14,13 +14,24 @@ the ZIP and SFO, and calls the system promoter to update `RELCS0001`.
 It leaves `ux0:data/reLCS/` intact, apart from its own `update.log`.
 
 No separate application is installed: the VPK contains no updater SFO,
-LiveArea or icon. Close the game before opening UPDATE. Networking is isolated
-from normal game startup. After verification and extraction, networking is
+LiveArea or icon. Close the game before opening UPDATE. Normal startup makes
+one silent background metadata check; a newer release is announced by a
+native dialog at the main menu, or the next pause menu if loading finishes
+first. Installation still opens only through UPDATE. After verification and extraction, networking is
 closed and `app0:` is unmounted before calling the promoter. Failure to
 unmount blocks installation. The updater exits after installation so START
 can mount the updated game again.
 
 ## Local checks
+
+- Startup notification control flow tested with native ASan and Vita/thread
+  stubs: asynchronous start, French/English messages, newer/equal/older versions,
+  offline and HTTP failures, invalid metadata/SFO, thread failures, dialog
+  failure, one notification per launch and network cleanup before rendering.
+- Production startup transfer tested for the offline skip, six-second request
+  timeout, 4 KiB limit, TLS/HTTP errors, no input polling or framebuffer drawing
+  on the worker, and release of the network heap. Physical input tests check
+  held confirmation suppression, release and the following fresh press.
 
 - Vita cheat entry now uses physical button presses, independent of gameplay
   bindings and controller/keyboard switching. The legacy GTA III pad table is
@@ -71,6 +82,10 @@ can mount the updated game again.
    from [the cheat guide](CHEATS.md). Repeat on foot and in a vehicle, including
    custom gameplay bindings. Confirm HUD feedback, gameplay effects and stable
    weapon/vehicle streaming. Check the remaining mapped effects separately.
+6. With a newer compatible release available, check the native notification
+   after loading, its language and confirmation input. Repeat offline and
+   with an equal/older version; there should be no dialog or added loading
+   wait. If START is selected before the check finishes, open the pause menu.
 
 Publishing the new VPK alone does not activate in-console updates. The
 matching `update.txt` must be an asset of the same tested public **latest**

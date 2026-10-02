@@ -91,6 +91,7 @@ VitaInit(void)
 	if(!FileExists(VITA_DATA_DIR "models/gta3.img"))
 		printf("ERROR: game data not found, copy it to %s\n", VITA_DATA_DIR);
 	VitaFlushLog();
+	VitaBeginStartupUpdateCheck();
 }
 
 unsigned int

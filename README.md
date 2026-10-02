@@ -87,6 +87,11 @@ saves, and settings. **Circle** cancels a download, and selecting Update
 again resumes it. Keep about **550 MB free** and leave the Vita powered on
 during installation.
 
+At startup, the game checks for updates in the background if Wi-Fi is already
+connected. A native Vita dialog at the menu announces a newer compatible
+release and directs you to **UPDATE**. It stays silent when offline or already
+up to date. The check does not download or install anything.
+
 After installation, close the game's LiveArea page and select **START** to
 launch the updated version. If you installed the earlier test build's
 separate **GTA LCS Update** bubble, you can delete that bubble; keep the game.

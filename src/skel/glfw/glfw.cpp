@@ -2322,6 +2322,12 @@ main(int argc, char *argv[])
 					{
 						if(!WindowIconified)
 							RsEventHandler(rsFRONTENDIDLE, nil);
+#ifdef PSP2
+						// Frontend rendering has ended the GXM scene. Native dialogs
+						// must be rendered here, never from the network worker.
+						if(!WindowIconified && FrontEndMenuManager.m_bMenuActive && VitaPollStartupUpdate())
+							CPad::GetPad(0)->Clear(false);
+#endif
 
 #ifdef PS2_MENU
 						if ( !FrontEndMenuManager.m_bMenuActive || TheMemoryCard.m_bWantToLoad )
@@ -2405,6 +2411,9 @@ main(int argc, char *argv[])
 								Bench::FrameEnd();
 #endif
 								VitaPerfIdleEnd(CTimer::GetTimeInMilliseconds(), CTimer::GetIsPaused());
+								// If the probe finished after START, notify at the next pause menu.
+								if(!WindowIconified && FrontEndMenuManager.m_bMenuActive && VitaPollStartupUpdate())
+									CPad::GetPad(0)->Clear(false);
 							}
 #else
 #ifdef RELCS_BENCHMARK

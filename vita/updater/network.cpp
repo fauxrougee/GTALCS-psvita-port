@@ -23,6 +23,7 @@ struct Transfer {
     std::string text;
     uint64_t base=0, limit=4096, received=0, lastUI=0;
     bool canceled=false;
+    bool quiet=false;
     std::string label="Checking for updates";
 };
 size_t Receive(char *data,size_t size,size_t count,void *arg) {
@@ -37,6 +38,7 @@ size_t Receive(char *data,size_t size,size_t count,void *arg) {
 }
 int Progress(void *arg,curl_off_t,curl_off_t now,curl_off_t,curl_off_t) {
     auto &t=*static_cast<Transfer*>(arg);
+    if(t.quiet) return 0;
     if(Buttons()&SCE_CTRL_CIRCLE) { t.canceled=true; return 1; }
     uint64_t clock=sceKernelGetProcessTimeWide();
     if(clock-t.lastUI>=250000) {
@@ -64,6 +66,10 @@ CURLcode Request(const char *url,Transfer &transfer,long &status,std::string &er
     curl_easy_setopt(curl,CURLOPT_MAXREDIRS,5L);
     curl_easy_setopt(curl,CURLOPT_FAILONERROR,1L);
     curl_easy_setopt(curl,CURLOPT_CONNECTTIMEOUT,15L);
+    if(transfer.quiet) {
+        curl_easy_setopt(curl,CURLOPT_CONNECTTIMEOUT_MS,2000L);
+        curl_easy_setopt(curl,CURLOPT_TIMEOUT_MS,6000L);
+    }
     curl_easy_setopt(curl,CURLOPT_LOW_SPEED_LIMIT,1024L);
     curl_easy_setopt(curl,CURLOPT_LOW_SPEED_TIME,30L);
     curl_easy_setopt(curl,CURLOPT_NOSIGNAL,1L);
@@ -111,7 +117,18 @@ void StopNetwork() {
     if(ctlReady) sceNetCtlTerm();
     if(netReady) sceNetTerm();
     if(netModule) sceSysmoduleUnloadModule(SCE_SYSMODULE_NET);
-    curlReady=ctlReady=netReady=netModule=false; netMemory.clear();
+    curlReady=ctlReady=netReady=netModule=false;
+    std::vector<unsigned char>().swap(netMemory);
+}
+bool FetchStartupManifest(std::string &text,std::string &error) {
+    int state=0;
+    if(sceNetCtlInetGetState(&state)<0 || state!=SCE_NETCTL_STATE_CONNECTED) {
+        error="Offline; startup update check skipped."; return false;
+    }
+    Transfer transfer; transfer.quiet=true; long status=0;
+    CURLcode result=Request(MetadataURL,transfer,status,error);
+    if(result!=CURLE_OK || status!=200) return false;
+    text=transfer.text; return true;
 }
 bool FetchManifest(std::string &text,std::string &error) {
     Transfer transfer; long status=0;

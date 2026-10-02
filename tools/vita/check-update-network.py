@@ -55,7 +55,7 @@ void mbedtls_sha256_free(mbedtls_sha256_context*) {}
 #endif
 std::string root,certificate;
 bool pressed=false,corrupt=false,shortBody=false,rangeFails=false,ignoreRange=false,tlsFails=false;
-int statusCode=200,requests=0;
+int statusCode=200,requests=0,buttonReads=0,screens=0,connectionState=3,boundedRequests=0;
 std::vector<char> body;
 bool online=false;
 struct FakeCurl {
@@ -63,6 +63,7 @@ struct FakeCurl {
     curl_xferinfo_callback progress=nullptr;
     void *writeArg=nullptr,*progressArg=nullptr;
     curl_off_t resume=0;
+    long timeout=0,connectTimeout=0;
     bool peer=false,host=false,protocol=false,redirectProtocol=false,ca=false,ssl=false,fail=false;
     CURL *real=nullptr;
 };
@@ -105,6 +106,8 @@ template<class T> CURLcode TestSet(CURL *c,CURLoption option,T value) {
         if(option==CURLOPT_SSLVERSION) t.ssl=value==CURL_SSLVERSION_TLSv1_2;
         if(option==CURLOPT_FAILONERROR) t.fail=value==1;
         if(option==CURLOPT_RESUME_FROM_LARGE) t.resume=value;
+        if(option==CURLOPT_TIMEOUT_MS) t.timeout=value;
+        if(option==CURLOPT_CONNECTTIMEOUT_MS) t.connectTimeout=value;
     } else if constexpr(std::is_same<T,const char*>::value) {
         if(option==CURLOPT_PROTOCOLS_STR) t.protocol=!strcmp(value,"https");
         if(option==CURLOPT_REDIR_PROTOCOLS_STR) t.redirectProtocol=!strcmp(value,"https");
@@ -121,6 +124,7 @@ CURLcode TestPerform(CURL *c) {
     auto &t=transfers[c]; ++requests;
     assert(t.peer && t.host && t.ssl && t.ca && t.protocol && t.redirectProtocol && t.fail);
     assert(t.write && t.progress && t.writeArg && t.progressArg);
+    if(t.timeout) { assert(t.timeout==6000 && t.connectTimeout==2000); ++boundedRequests; }
     if(online) {
 #ifdef _WIN32
         return Function<decltype(&curl_easy_perform)>("curl_easy_perform")(c);
@@ -169,7 +173,8 @@ const curl_version_info_data *TestVersion(CURLversion version) {
     return curl_version_info(version);
 #endif
 }
-constexpr int SCE_CTRL_CIRCLE=0x2000,SCE_SYSMODULE_NET=0;
+constexpr int SCE_CTRL_CIRCLE=0x2000,SCE_SYSMODULE_NET=0,SCE_NETCTL_STATE_CONNECTED=3;
+int sceNetCtlInetGetState(int *state) { *state=connectionState; return 0; }
 struct SceNetInitParam { void *memory; int size,flags; };
 struct SceIoStat { uint64_t st_size=0; };
 std::string Rewrite(const char *path) {
@@ -187,8 +192,8 @@ int sceSysmoduleLoadModule(int) { return 0; } int sceSysmoduleUnloadModule(int) 
 int sceNetInit(SceNetInitParam*) { return 0; } int sceNetTerm() { return 0; }
 int sceNetCtlInit() { return 0; } int sceNetCtlTerm() { return 0; }
 namespace Update {
-unsigned Buttons() { return pressed?SCE_CTRL_CIRCLE:0; }
-void Screen(const std::string&,const std::string&,int,const std::string&) {}
+unsigned Buttons() { ++buttonReads; return pressed?SCE_CTRL_CIRCLE:0; }
+void Screen(const std::string&,const std::string&,int,const std::string&) { ++screens; }
 void Log(const char*,...) {}
 }
 #define fopen TestOpen
@@ -253,7 +258,21 @@ int main(int argc,char **argv) {
         assert(Update::Request("https://github.com/",noCA,status,error)!=CURLE_OK);
         puts("PASS: real GitHub HTTPS redirects and certificate verification (host curl)");
     }
-    Update::StopNetwork(); assert(transfers.empty());
+    // Quiet startup checks never read game input, draw UI or connect offline.
+    online=false; body={'t','e','s','t'};
+    statusCode=200; pressed=true; tlsFails=false;
+    buttonReads=screens=0; connectionState=0; std::string startup;
+    int before=requests;
+    assert(!Update::FetchStartupManifest(startup,error) && requests==before);
+    connectionState=SCE_NETCTL_STATE_CONNECTED;
+    assert(Update::FetchStartupManifest(startup,error) && startup=="test");
+    assert(buttonReads==0 && screens==0 && boundedRequests==1);
+    statusCode=404; assert(!Update::FetchStartupManifest(startup,error));
+    statusCode=200; body.resize(4097,'x'); assert(!Update::FetchStartupManifest(startup,error));
+    body={'t'}; tlsFails=true; assert(!Update::FetchStartupManifest(startup,error));
+    assert(buttonReads==0 && screens==0);
+    Update::StopNetwork(); assert(transfers.empty() && Update::netMemory.capacity()==0);
+    puts("PASS: silent startup probe, offline skip, metadata bounds, TLS/HTTP errors and network memory release");
 }
 '''
 

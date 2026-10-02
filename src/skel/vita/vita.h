@@ -13,6 +13,11 @@ void VitaFlushLog(void);
 // Held physical buttons for LCS cheat entry, unaffected by gameplay bindings.
 unsigned int VitaGetCheatButtons(void);
 
+// Runs once in the background; native dialog is polled only from the menu.
+void VitaBeginStartupUpdateCheck(void);
+bool VitaPollStartupUpdate(void);
+void VitaSuppressInputUntilRelease(void);
+
 // Free memory left in the newlib heap, in bytes.
 unsigned int VitaGetFreeMemory(void);
 

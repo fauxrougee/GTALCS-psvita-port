@@ -70,6 +70,7 @@ host checks before testing installation on a console:
 ```sh
 python tools/vita/check-updater.py
 python tools/vita/check-update-network.py
+python tools/vita/check-startup-update.py
 python tools/vita/check-update-launch.py
 python tools/vita/check-updater.py --vpk dist/reLCS-01.19-intro-complete.vpk
 python tools/vita/check-software-playback.py update update-fail skip

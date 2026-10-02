@@ -124,6 +124,13 @@ endif()
 file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/vita_build_id.h"
 	CONTENT "#define VITA_BUILD_ID \"${VITA_BUILD_ID}\"\n")
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+if(VITA_WITH_INTRO AND NOT VITA_BENCHMARK)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE VITA_STARTUP_UPDATE)
+	target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/updater")
+	target_sources(${PROJECT_NAME} PRIVATE updater/core.cpp updater/network.cpp updater/platform.cpp updater/ui.cpp)
+	target_link_libraries(${PROJECT_NAME} curl mbedtls mbedx509 mbedcrypto zstd
+		SceNet_stub SceNetCtl_stub ScePromoterUtil_stub)
+endif()
 target_compile_definitions(${PROJECT_NAME} PRIVATE LIBRW AUDIO_OAL
 	VITA_DATA_DIR="${VITA_DATA_DIR}")
 if(VITA_BENCHMARK)
