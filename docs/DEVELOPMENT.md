@@ -12,9 +12,10 @@ python tools/vita/check-render-state.py
 python tools/vita/check-librw-patch.py
 python tools/vita/check-async-log.py
 python tools/vita/check-save-paths.py
+python tools/vita/check-vita-controls.py
 ```
 
-These check frame accounting, rendering values, the asynchronous logger, and save paths/error handling. Host tests need GCC with ASan/UBSan on Linux, or MSVC x64 with AddressSanitizer on Windows. MSVC 14.44 was used for the local checks. Set `VITA_TEST_VCVARS` or `VITA_TEST_MSVC_VERSION` to select another installation.
+These check frame accounting, rendering values, the asynchronous logger, save paths/error handling, and controller bindings. Host tests need GCC with ASan/UBSan on Linux, or MSVC x64 with AddressSanitizer on Windows. MSVC 14.44 was used for the local checks. Set `VITA_TEST_VCVARS` or `VITA_TEST_MSVC_VERSION` to select another installation.
 
 To check benchmark calculations and the report tool:
 
@@ -65,5 +66,6 @@ Upload VPKs to GitHub Releases. Keep `assets/`, `sdk/`, `build/`, `dist/`, and `
 
 - [01.16: renderer optimizations and benchmark](VALIDATION-01.16.md)
 - [01.17: Vita save folder and error reporting](VALIDATION-01.17.md)
+- [01.18: D-pad left and existing controller settings](VALIDATION-01.18.md)
 - [01.15: removal of the performance overlay](VALIDATION-01.15.md)
 - [01.14: full intro and source build](VALIDATION-01.14.md)

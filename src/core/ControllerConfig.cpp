@@ -352,6 +352,17 @@ void CControllerConfigManager::InitDefaultControlConfigJoyPad(uint32 buttons)
 	m_bFirstCapture = true;
 
 	uint32 btn = buttons;
+#ifdef PSP2
+	// GLFW reports 15 physical button entries. GTA uses 16 logical button IDs,
+	// including D-pad left (16) and the two triggers supplied through axes.
+	if (btn != 0) {
+		btn = 16;
+		// Older settings may say all buttons were initialized while GO_LEFT is
+		// still blank. Repair only that missing binding, before the early return.
+		if (GetControllerKeyAssociatedWithAction(GO_LEFT, JOYSTICK) == 0)
+			SetControllerKeyAssociatedWithAction(GO_LEFT, 16, JOYSTICK);
+	}
+#endif
 	if (buttons > 16)
 		btn = 16;
 
@@ -384,7 +395,9 @@ void CControllerConfigManager::InitDefaultControlConfigJoyPad(uint32 buttons)
 		switch (btn)
 		{
 		IF_BTN_IN_RANGE(16)
+#ifndef PSP2
 			SetControllerKeyAssociatedWithAction(GO_LEFT,                           16, JOYSTICK);
+#endif
 		IF_BTN_IN_RANGE(15)											                        
 			SetControllerKeyAssociatedWithAction(GO_BACK,                           15, JOYSTICK);
 		IF_BTN_IN_RANGE(14)											                        
@@ -436,7 +449,9 @@ void CControllerConfigManager::InitDefaultControlConfigJoyPad(uint32 buttons)
 		switch (btn)
 		{
 		IF_BTN_IN_RANGE(16)
+#ifndef PSP2
 			SetControllerKeyAssociatedWithAction(GO_LEFT,                           16, JOYSTICK);
+#endif
 		IF_BTN_IN_RANGE(15)
 			SetControllerKeyAssociatedWithAction(GO_BACK,                           15, JOYSTICK);
 		IF_BTN_IN_RANGE(14)

@@ -9,7 +9,7 @@ the frame. It does not predict performance from a PC test.
 1. Set up the converted game data and shader compiler using the
    [installation guide](../README.md#install).
 2. [Build from source](../vita/README.md) with `--benchmark`, then install
-   `dist/reLCS-01.17-benchmark.vpk`. The public release contains only the complete game.
+   `dist/reLCS-01.18-benchmark.vpk`. The public release contains only the complete game.
 3. Launch **reLCS Benchmark** and let the complete run finish.
 4. Copy the new dated folder from `ux0:data/reLCS/benchmark/` to your PC.
 

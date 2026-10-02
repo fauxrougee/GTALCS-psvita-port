@@ -18,7 +18,7 @@ include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
 
 set(VITA_APP_NAME "GTA Liberty City Stories")
 set(VITA_TITLEID  "RELCS0001")
-set(VITA_VERSION  "01.17")
+set(VITA_VERSION  "01.18")
 set(VITA_DATA_DIR "ux0:data/reLCS/")
 option(VITA_DETAILED_GL_PROFILE "Time every GL draw/state call (adds CPU overhead)" OFF)
 

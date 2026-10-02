@@ -30,6 +30,8 @@ jobs:
           python3 tools/vita/check-async-log.py
       - name: Check Vita save paths and failure reporting
         run: python3 tools/vita/check-save-paths.py
+      - name: Check Vita input and saved control bindings
+        run: python3 tools/vita/check-vita-controls.py
       - name: Check the benchmark metrics and report tool
         run: |
           python3 tools/vita/check-bench-metrics.py

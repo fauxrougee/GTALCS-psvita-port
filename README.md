@@ -62,7 +62,7 @@ Check that `gta3.img` is at **`ux0:data/reLCS/models/gta3.img`**. An extra folde
 
 ### 3. Install the VPK
 
-Download [**reLCS 01.17 with the full intro**](https://github.com/fauxrougee/GTALCS-psvita-port/releases/download/v01.17/reLCS-01.17-intro-complete.vpk) (163 MB).
+Download [**reLCS 01.18 with the full intro**](https://github.com/fauxrougee/GTALCS-psvita-port/releases/download/v01.18/reLCS-01.18-intro-complete.vpk) (163 MB).
 
 Copy the `.vpk` to your Vita, open it in VitaShell, and install it. The ZIP files labeled *Source code* on the release page are for developers.
 
@@ -72,7 +72,9 @@ Open the **GTA Liberty City Stories** bubble and select **START**. You can skip 
 
 ## Updating
 
-Install the new VPK over the existing version. Keep `ux0:data/reLCS/` in place, including your saves. Working game data does not need to be converted again for 01.17.
+Install the new VPK over the existing version. Keep `ux0:data/reLCS/` in place, including your saves. Working game data does not need to be converted again for 01.18.
+
+Version 01.18 fixes D-pad left during gameplay and restores its missing binding in older settings automatically. There is no need to delete your settings files. Existing custom bindings are kept.
 
 Version 01.17 creates the `userfiles` folder automatically and reports failed saves correctly. Existing saves keep the same filenames and format. A save that 01.16 reported as successful without creating a file cannot be recovered.
 
