@@ -6,7 +6,6 @@ constexpr const char *Work="ux0:data/reLCS-update";
 constexpr const char *Package="ux0:data/reLCS-update/package";
 bool Directory(const char *path);
 bool ClearPackage();
-bool Copy(const char *source, const char *destination);
 int Promote(const char *path);
 bool OpenScreen();
 void Screen(const std::string &message, const std::string &detail="", int percent=-1,
@@ -14,5 +13,5 @@ void Screen(const std::string &message, const std::string &detail="", int percen
 void CloseScreen();
 unsigned Buttons();
 void Log(const char *format,...);
-int StartHelper();
+int StartUpdater();
 }

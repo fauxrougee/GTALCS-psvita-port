@@ -29,6 +29,7 @@ def main():
         for name in ['game.bin','boot/intro.vtm','sce_sys/package/head.bin','updater/eboot.bin']:
             assert name in z.namelist(),f'Missing {name}'
         assert b'psla:-update' in z.read('sce_sys/livearea/contents/template.xml')
+        assert not any(name.startswith('updater/sce_sys/') for name in z.namelist()), 'Separate updater app is forbidden'
         unpacked=sum(info.file_size for info in z.infolist())
     checksum=package.file_digest(path)
     metadata=('RELCS-UPDATE-1\n'+f'version={version}\nsize={path.stat().st_size}\n'

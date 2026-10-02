@@ -1,4 +1,4 @@
-# A separate title lets the promoter replace RELCS0001 after the game exits.
+# Internal SELF launched only by the game's LiveArea UPDATE action.
 add_executable(relcs_update updater/main.cpp updater/core.cpp updater/network.cpp
     updater/platform.cpp updater/ui.cpp)
 target_compile_definitions(relcs_update PRIVATE PSP2 CURL_STATICLIB)
@@ -13,14 +13,7 @@ target_link_libraries(relcs_update curl mbedtls mbedx509 mbedcrypto zstd z
     SceNet_stub SceNetCtl_stub SceRtc_stub SceSysmodule_stub ScePromoterUtil_stub
     SceAppMgr_stub SceCtrl_stub SceDisplay_stub ScePower_stub SceLibKernel_stub)
 vita_create_self(update.bin relcs_update UNSAFE)
-add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/helper.sfo" "${CMAKE_CURRENT_BINARY_DIR}/helper-head.bin"
-    COMMAND "${VITA_MKSFOEX}" -s "APP_VER=${VITA_VERSION}" -s TITLE_ID=RLCUPD001
-        "GTA LCS Update" "${CMAKE_CURRENT_BINARY_DIR}/helper.sfo"
-    COMMAND "${Python3_EXECUTABLE}" "${ROOT}/tools/vita/make-update-head.py"
-        --sfo "${CMAKE_CURRENT_BINARY_DIR}/helper.sfo" --output "${CMAKE_CURRENT_BINARY_DIR}/helper-head.bin"
-    DEPENDS "${ROOT}/tools/vita/make-update-head.py" updater/head-template.bin VERBATIM)
-list(APPEND PACKAGE_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/update.bin"
-    "${CMAKE_CURRENT_BINARY_DIR}/helper.sfo" "${CMAKE_CURRENT_BINARY_DIR}/helper-head.bin")
+list(APPEND PACKAGE_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/update.bin")
 file(GLOB UPDATE_RESOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/updater/licenses/*")
 list(APPEND PACKAGE_DEPENDS ${UPDATE_RESOURCES} "${CMAKE_CURRENT_SOURCE_DIR}/updater/ca-bundle.pem")
 list(APPEND PACKAGE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/updater/template.xml")

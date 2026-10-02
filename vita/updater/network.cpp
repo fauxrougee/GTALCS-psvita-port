@@ -54,7 +54,7 @@ CURLcode Request(const char *url,Transfer &transfer,long &status,std::string &er
     char message[CURL_ERROR_SIZE]={};
     curl_easy_setopt(curl,CURLOPT_URL,url);
     curl_easy_setopt(curl,CURLOPT_USERAGENT,"reLCS-PSVita-Updater/1");
-    curl_easy_setopt(curl,CURLOPT_CAINFO,"app0:certs/ca-bundle.pem");
+    curl_easy_setopt(curl,CURLOPT_CAINFO,"app0:updater/certs/ca-bundle.pem");
     curl_easy_setopt(curl,CURLOPT_SSL_VERIFYPEER,1L);
     curl_easy_setopt(curl,CURLOPT_SSL_VERIFYHOST,2L);
     curl_easy_setopt(curl,CURLOPT_SSLVERSION,long(CURL_SSLVERSION_TLSv1_2));

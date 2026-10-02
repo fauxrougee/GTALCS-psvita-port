@@ -89,7 +89,7 @@ int sceAppUtilAppEventParseLiveArea(SceAppUtilAppEventParam*,char *p) { strcpy(p
 namespace Update {
 bool OpenScreen() { return true; }
 void CloseScreen() {}
-int StartHelper() { return scenario=="update-fail"?-123:0; }
+int StartUpdater() { return scenario=="update-fail"?-123:0; }
 void Screen(const std::string&,const std::string&) {}
 unsigned Buttons() { return SCE_CTRL_CIRCLE; }
 }
@@ -189,7 +189,7 @@ int main(int argc,char **argv){
     if(scenario=="update" || scenario=="update-fail") {
         assert(LauncherMain()==(scenario=="update"?0:-123));
         assert(!gameLaunches && !audioBlocks && !displayPresentations && !nextThread);
-        puts("PASS: LiveArea update launches the helper without movie or game initialization");
+        puts("PASS: LiveArea update launches the internal updater without movie or game initialization");
         return 0;
     }
     // join-fail uses the same early skip as "skip", then simulates failed joins.

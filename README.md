@@ -79,13 +79,17 @@ Version 01.18 fixes D-pad left during gameplay and restores its missing binding 
 Version 01.17 creates the `userfiles` folder automatically and reports failed saves correctly. Existing saves keep the same filenames and format. A save that 01.16 reported as successful without creating a file cannot be recovered.
 
 The upcoming **01.19** build adds an **UPDATE** tile to the game's LiveArea.
-Close the game, then select it to open **GTA LCS Update**. The small utility is
-installed automatically on first use and has its own bubble; no plugin is
-required. It checks the latest compatible GitHub release, asks before
+Close the game, then select it to open **GTA LCS Update**. It is part of the
+game and opens only through this tile; there is no additional home-screen
+bubble or plugin. It checks the latest compatible GitHub release, asks before
 downloading, and installs the complete VPK while keeping your game data,
 saves, and settings. **Circle** cancels a download, and selecting Update
 again resumes it. Keep about **550 MB free** and leave the Vita powered on
 during installation.
+
+After installation, close the game's LiveArea page and select **START** to
+launch the updated version. If you installed the earlier test build's
+separate **GTA LCS Update** bubble, you can delete that bubble; keep the game.
 
 Install the first version with this feature through VitaShell. Subsequent
 compatible releases can be installed from the LiveArea. This feature is

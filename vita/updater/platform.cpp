@@ -46,23 +46,6 @@ void Log(const char *format,...) {
     va_list args; va_start(args,format); vfprintf(file,format,args); va_end(args);
     fputc('\n',file); fclose(file);
 }
-bool Copy(const char *source, const char *dest) {
-    std::string target=dest;
-    for(size_t pos=target.find('/');pos!=std::string::npos;pos=target.find('/',pos+1))
-        if(!Directory(target.substr(0,pos).c_str())) return false;
-    FILE *in=fopen(source,"rb"); if(!in) return false;
-    FILE *out=fopen(dest,"wb");
-    if(!out) { fclose(in); return false; }
-    unsigned char buffer[32768]; size_t count; bool okay=true;
-    while((count=fread(buffer,1,sizeof(buffer),in))>0) {
-        if(fwrite(buffer,1,count,out)!=count) { okay=false; break; }
-        sceKernelPowerTick(SCE_KERNEL_POWER_TICK_DEFAULT);
-    }
-    if(ferror(in)) okay=false;
-    if(fclose(in)) okay=false;
-    if(fclose(out)) okay=false;
-    return okay;
-}
 int Promote(const char *path) {
     // The SDK's internal PAF and promoter modules implement package installation.
     uint32_t args[]={0x180000,0xffffffff,0xffffffff,1,0xffffffff,0xffffffff};
@@ -86,26 +69,12 @@ int Promote(const char *path) {
     Log("Promote %s: 0x%08X",path,result);
     return result;
 }
-int StartHelper() {
-    Directory(Work);
-    const std::string folder=std::string(Work)+"/helper";
-    const int closed=sceAppMgrDestroyOtherApp();
-    Log("Release previous helper: 0x%08X",closed);
-    const char *files[]={"eboot.bin","certs/ca-bundle.pem","sce_sys/param.sfo",
-        "sce_sys/package/head.bin","sce_sys/icon0.png","sce_sys/livearea/contents/bg.png",
-        "sce_sys/livearea/contents/startup.png","sce_sys/livearea/contents/template.xml",
-        "licenses/curl.txt","licenses/mbedtls.txt","licenses/zstd.txt","licenses/font.txt",
-        "licenses/vitashell.txt"};
-    Screen("Preparing GTA LCS Update","Installing the small updater utility...");
-    for(const char *file:files) {
-        if(!Copy((std::string("app0:updater/")+file).c_str(),(folder+"/"+file).c_str())) {
-            Log("Cannot copy helper file: %s",file); return -1;
-        }
-    }
-    int result=Promote(folder.c_str());
-    if(result<0) return result;
-    result=sceAppMgrLaunchAppByUri(0xfffff,"psgm:play?titleid=RLCUPD001");
-    Log("Launch helper: 0x%08X",result);
+int StartUpdater() {
+    // Replace this process within the game title; never register another app.
+    CloseScreen();
+    int result=sceAppMgrLoadExec("app0:updater/eboot.bin",nullptr,nullptr);
+    Log("Load internal updater: 0x%08X",result);
+    if(result<0) OpenScreen();
     return result;
 }
 }

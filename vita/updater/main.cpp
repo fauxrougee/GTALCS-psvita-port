@@ -32,7 +32,7 @@ bool ExtractionProgress(uint64_t now,uint64_t total) {
     return !(Update::Buttons()&SCE_CTRL_CIRCLE);
 }
 std::string InstalledVersion() {
-    // param.sfo belongs to the game, not this independent utility's app0:.
+    // Read the installed file directly, including after app0: is released.
     FILE *file=fopen("ux0:app/RELCS0001/sce_sys/param.sfo","rb");
     if(!file) return "";
     std::vector<unsigned char> data(65536);
@@ -76,9 +76,14 @@ bool Run(std::string &error) {
     }
     StopNetwork();
     Screen("Installing version "+manifest.version,"Keep the Vita powered on.",-1,"");
-    // Running under RLCUPD001 releases the game's app mount before promotion.
-    int result=sceAppMgrDestroyOtherApp();
-    Log("Destroy other app: 0x%08X",result);
+    // All executables, UI and libraries are in RAM and networking is closed.
+    // Release the read-only app mount before replacing the installed package.
+    int result=sceAppMgrUmount("app0:");
+    Log("Unmount game before installation: 0x%08X",result);
+    if(result<0) {
+        error="Cannot release the game mount. The verified VPK is kept for retry.";
+        return false;
+    }
     result=Promote(Package);
     if(result<0) {
         char code[32]; snprintf(code,sizeof(code),"0x%08X",result);
@@ -87,12 +92,9 @@ bool Run(std::string &error) {
     }
     sceIoRemove(DownloadPath);
     ClearPackage();
-    Screen("Update installed","Version "+manifest.version+"\nSaves and settings have been kept.",-1,"X  Start game       O  Back");
-    if(WaitPress()&SCE_CTRL_CROSS) {
-        result=sceAppMgrLaunchAppByUri(0xfffff,"psgm:play?titleid=RELCS0001");
-        Log("Launch updated game: 0x%08X",result);
-        if(result<0) { error="Update installed. Start the game from LiveArea."; return false; }
-    }
+    // Exit so the next START gets a fresh app0: mount of the new installation.
+    Screen("Update installed","Version "+manifest.version+"\nSaves and settings have been kept.\nClose this page, then select START.",-1,"O  Back");
+    WaitPress();
     return true;
 }
 }

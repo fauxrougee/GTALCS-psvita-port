@@ -81,7 +81,7 @@ int main()
 	}
 	if(Update::LaunchUpdate(launch)){
 		Update::OpenScreen();
-		const int result=Update::StartHelper();
+		const int result=Update::StartUpdater();
 		if(result<0){
 			char code[64]; snprintf(code,sizeof(code),"Error 0x%08X. See ux0:data/reLCS/update.log",result);
 			Update::Screen("Cannot open updater",code);

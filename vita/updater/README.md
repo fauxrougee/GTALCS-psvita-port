@@ -1,16 +1,23 @@
 # GTA LCS Update
 
-The complete build includes an **Update** tile in the game's LiveArea. Close
-the game before opening it. On first use, the launcher installs the bundled
-`RLCUPD001` utility and opens it. This adds a small **GTA LCS Update** bubble;
-there is no plugin or additional manual installation.
+The complete build includes an **UPDATE** tile in the game's LiveArea. Close
+the game before opening it. The launcher uses load-exec to open the bundled
+`app0:updater/eboot.bin` within `RELCS0001`. It does not install or register a
+second application. The updater has no separate SFO, icon or LiveArea.
 
-The utility runs under a different title because the Vita promoter cannot
-replace an app while that app is running. It stages the release, closes any
-remaining game process, then asks the system promoter to install `RELCS0001`.
+The utility stages and verifies the release, closes networking, releases
+`app0:` with `sceAppMgrUmount`, then asks the system promoter to replace
+`RELCS0001`. A failed unmount stops installation. Once installed, close the
+game's LiveArea page and select **START**, allowing a fresh application mount.
+This installation path still needs a complete physical-console test; native
+host tests verify its ordering and failure handling, not the system promoter.
 The updater does not delete the installed game or write its saves/settings.
 Its working files stay in `ux0:data/reLCS-update/` and diagnostics append to
 `ux0:data/reLCS/update.log`.
+
+The earlier local test build registered `RLCUPD001`. If its **GTA LCS Update**
+bubble is already installed, delete that old utility from the home screen.
+The new build does not create it again. Do not delete the game bubble.
 
 ## Download and install
 

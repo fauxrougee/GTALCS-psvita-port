@@ -64,7 +64,7 @@ def main():
                  'livearea/contents/template.xml']:
         files['sce_sys/'+name] = sce_sys/name
     if not args.intro and args.title_id=='RELCS0001':
-        # Direct-launch test builds do not contain the helper or its Update tile.
+        # Direct-launch test builds do not contain the updater or its Update tile.
         files['sce_sys/livearea/contents/template.xml']=ROOT/'vita/updater/template.xml'
     if args.intro:
         files.update({'game.bin': build/'game.bin', 'boot/intro.vtm': build/'intro.vtm',
@@ -72,12 +72,7 @@ def main():
                       'sce_sys/livearea/contents/update.png': sce_sys/'livearea/contents/update.png',
                       'updater/eboot.bin': build/'update.bin',
                       'updater/certs/ca-bundle.pem': ROOT/'vita/updater/ca-bundle.pem',
-                      'updater/sce_sys/param.sfo': build/'helper.sfo',
-                      'updater/sce_sys/package/head.bin': build/'helper-head.bin',
-                      'updater/sce_sys/livearea/contents/template.xml': ROOT/'vita/updater/template.xml',
                       'licenses/vitashell.txt': ROOT/'vita/updater/licenses/vitashell.txt'})
-        for name in ['icon0.png','livearea/contents/bg.png','livearea/contents/startup.png']:
-            files['updater/sce_sys/'+name]=sce_sys/name
         for name in ['curl.txt','mbedtls.txt','zstd.txt','font.txt','vitashell.txt']:
             files['updater/licenses/'+name]=ROOT/'vita/updater/licenses'/name
     for path in files.values():
@@ -109,8 +104,8 @@ def main():
             assert struct.unpack('>IIBBBBB', z.read(name)[16:29]) == (width,height,8,3,0,0,0)
         unpacked_size=sum(info.file_size for info in z.infolist())
         if args.intro:
-            helper=sfo_values(z.read('updater/sce_sys/param.sfo'))
-            assert helper['TITLE_ID']=='RLCUPD001' and helper['APP_VER']==args.version
+            assert not any(name.startswith('updater/sce_sys/') for name in z.namelist()), \
+                'Internal updater must not contain a separate app definition or icon'
             assert b'psla:-update' in z.read('sce_sys/livearea/contents/template.xml')
     manifest = {'version': args.version, 'title_id': args.title_id, 'intro': args.intro,
                 'unpacked_bytes':unpacked_size, 'updater':args.intro,

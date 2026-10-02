@@ -108,7 +108,7 @@ template<class T> CURLcode TestSet(CURL *c,CURLoption option,T value) {
     } else if constexpr(std::is_same<T,const char*>::value) {
         if(option==CURLOPT_PROTOCOLS_STR) t.protocol=!strcmp(value,"https");
         if(option==CURLOPT_REDIR_PROTOCOLS_STR) t.redirectProtocol=!strcmp(value,"https");
-        if(option==CURLOPT_CAINFO) { t.ca=!strcmp(value,"app0:certs/ca-bundle.pem"); return Set(c,option,certificate.c_str()); }
+        if(option==CURLOPT_CAINFO) { t.ca=!strcmp(value,"app0:updater/certs/ca-bundle.pem"); return Set(c,option,certificate.c_str()); }
     } else if constexpr(std::is_same<T,decltype(t.write)>::value) t.write=value;
     else if constexpr(std::is_same<T,decltype(t.progress)>::value) t.progress=value;
     else if constexpr(std::is_pointer<T>::value) {

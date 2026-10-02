@@ -6,23 +6,26 @@ installing an update on a physical Vita**. The latest public release remains
 
 ## Change
 
-The LiveArea Update tile launches an independent `RLCUPD001` utility instead
+The LiveArea Update tile launches the internal updater SELF within `RELCS0001` instead
 of starting the intro or engine. This utility checks the latest public
 release's `update.txt`, downloads the full VPK over verified HTTPS, checks
 its size/SHA-256, extracts it into a separate staging directory, validates
 the ZIP and SFO, and calls the system promoter to update `RELCS0001`.
 It leaves `ux0:data/reLCS/` intact, apart from its own `update.log`.
 
-The helper is installed automatically from the bundled files and adds a
-small GTA LCS Update bubble. It uses no Shell plugin. Close the game before
-opening the Update tile. Networking is isolated from normal game startup.
+No separate application is installed: the VPK contains no updater SFO,
+LiveArea or icon. Close the game before opening UPDATE. Networking is isolated
+from normal game startup. After verification and extraction, networking is
+closed and `app0:` is unmounted before calling the promoter. Failure to
+unmount blocks installation. The updater exits after installation so START
+can mount the updated game again.
 
 ## Local checks
 
 - Full native Windows VitaSDK build, including the unchanged movie/audio.
 - Game, launcher and updater ARM/Sony ELF load segments checked for overlap.
 - Complete VPK checked against its executable/resource inputs, ZIP CRCs,
-  title IDs, APP_VER and extended-memory flag.
+  game title ID, APP_VER, extended-memory flag and absence of a helper app.
 - Production parser/extractor run with MSVC x64 AddressSanitizer: streamed
   stored/deflated archives, exact extraction of every file in the complete
   VPK, cancellation, folder failures, invalid paths, duplicate names,
@@ -38,17 +41,22 @@ opening the Update tile. Networking is isolated from normal game startup.
   unavailable CA bundle was correctly rejected. This uses host libcurl;
   it does not prove the Vita's TLS handshake works.
 - Production launcher tested with controlled Vita calls: Update success and
-  helper failure never initialize video/audio/the game. Normal intro skip,
+  load-exec failure never initialize video/audio/the game. Normal intro skip,
   held-button skip and startup-error handoff remain functional.
+- Production updater launch/install control flow tested with Vita calls
+  replaced by stubs: internal SELF path, framebuffer closed before load-exec,
+  no helper promotion, networking closed before unmount, no installation
+  after an unmount error, and reporting of a promoter failure.
 
 ## Console checks still required
 
 1. Install the complete test VPK over 01.18. Confirm START and the full intro
    still work, and UPDATE opens the small utility without playing the intro.
-2. Confirm helper promotion, bubble creation, its UI, Wi-Fi/TLS, installed
+2. Confirm no new home-screen bubble, updater UI, Wi-Fi/TLS, installed
    version detection, and the no-compatible-release/up-to-date messages.
 3. Test a newer release prepared with a matching `update.txt`: cancel and
-   resume the download, then install and start the new version. Check saves,
+   resume the download, then confirm app0 unmount and promotion succeed while
+   running under the game title. Close the page and START the new version. Check saves,
    settings and game data after restarting the Vita.
 4. Exercise insufficient space, offline operation and failed installation.
    Preserve `ux0:data/reLCS/update.log` for failures.
