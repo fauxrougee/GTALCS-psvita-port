@@ -1,9 +1,15 @@
 <?xml version='1.0' encoding='utf-8'?>
-<livearea style="a1" format-ver="01.00" content-rev="2">
+<livearea style="a1" format-ver="01.00" content-rev="3">
   <livearea-background>
     <image>bg.png</image>
   </livearea-background>
   <gate>
     <startup-image>startup.png</startup-image>
   </gate>
+  <frame id="frame3">
+    <liveitem>
+      <target>psla:-update</target>
+      <background valign="bottom" align="center">update.png</background>
+    </liveitem>
+  </frame>
 </livearea>

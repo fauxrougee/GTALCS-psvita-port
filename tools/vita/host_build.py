@@ -9,7 +9,7 @@ import shutil
 import re
 
 
-def build(exe, sources, includes=(), defines=()):
+def build(exe, sources, includes=(), defines=(), libraries=()):
     exe = Path(exe)
     if os.name == 'nt':
         vcvars = Path(os.environ['VITA_TEST_VCVARS']) if os.environ.get('VITA_TEST_VCVARS') else None
@@ -48,13 +48,13 @@ def build(exe, sources, includes=(), defines=()):
         cmd = [compiler, '/nologo', '/std:c++17', '/EHsc', '/O2', '/Zi', '/MD',
                '/fsanitize=address', '/D_CRT_SECURE_NO_WARNINGS', '/W3',
                *['/D'+d for d in defines], *['/I'+str(p) for p in includes],
-               *map(str, sources), '/Fe:'+str(exe), '/link', '/INCREMENTAL:NO']
+               *map(str, sources), '/Fe:'+str(exe), '/link', '/INCREMENTAL:NO', *libraries]
     else:
         env = os.environ.copy()
         cmd = ['g++', '-std=c++17', '-O1', '-g', '-Wall', '-Wextra', '-pthread',
                '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-no-pie',
                *['-D'+d for d in defines], *['-I'+str(p) for p in includes],
-               *map(str, sources), '-o', str(exe)]
+               *map(str, sources), '-o', str(exe), *libraries]
     compiled = subprocess.run(cmd, env=env, cwd=exe.parent, capture_output=True, text=True)
     if compiled.returncode:
         print(compiled.stdout, compiled.stderr)

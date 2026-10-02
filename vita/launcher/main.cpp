@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <algorithm>
 #include <psp2/appmgr.h>
+#include <psp2/apputil.h>
 #include <psp2/ctrl.h>
 #include <psp2/display.h>
 #include <psp2/io/stat.h>
@@ -11,6 +12,8 @@
 #include <psp2/kernel/sysmem.h>
 #include "vita_boot_movie.h"
 #include "intro_log.h"
+#include "../updater/core.h"
+#include "../updater/platform.h"
 
 extern "C" {
 int _newlib_heap_size_user = 64*1024*1024;
@@ -67,6 +70,25 @@ void ReleaseDisplay()
 
 int main()
 {
+	SceAppUtilInitParam appInit={};
+	SceAppUtilBootParam boot={};
+	SceAppUtilAppEventParam event={};
+	char launch[2048]={};
+	if(sceAppUtilInit(&appInit,&boot)>=0){
+		if(sceAppUtilReceiveAppEvent(&event)>=0 && event.type==0x05) // LiveArea launch event
+			sceAppUtilAppEventParseLiveArea(&event,launch);
+		sceAppUtilShutdown();
+	}
+	if(Update::LaunchUpdate(launch)){
+		Update::OpenScreen();
+		const int result=Update::StartHelper();
+		if(result<0){
+			char code[64]; snprintf(code,sizeof(code),"Error 0x%08X. See ux0:data/reLCS/update.log",result);
+			Update::Screen("Cannot open updater",code);
+			while(!(Update::Buttons()&SCE_CTRL_CIRCLE)) sceKernelDelayThread(16000);
+		}
+		Update::CloseScreen(); sceKernelExitProcess(result); return result;
+	}
 	sceIoMkdir("ux0:data/reLCS",0777);
 	IntroLogInit();
 	IntroLog("[INTRO] Isolated movie launcher v8; compact lossless movie; stable engine with startup cache\n");

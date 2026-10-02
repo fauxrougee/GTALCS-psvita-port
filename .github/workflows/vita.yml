@@ -32,6 +32,12 @@ jobs:
         run: python3 tools/vita/check-save-paths.py
       - name: Check Vita input and saved control bindings
         run: python3 tools/vita/check-vita-controls.py
+      - name: Check updater policy, extraction and failed transfers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zlib1g-dev libcurl4-openssl-dev libssl-dev
+          python3 tools/vita/check-updater.py
+          python3 tools/vita/check-update-network.py
       - name: Check the benchmark metrics and report tool
         run: |
           python3 tools/vita/check-bench-metrics.py
@@ -51,14 +57,16 @@ jobs:
       - name: Install host and target dependencies
         run: |
           apt-get update
-          apt-get install -y python3-venv ffmpeg ninja-build git build-essential
-          vdpm install zlib taihen kubridge libmathneon vitaShaRK SceShaccCgExt vitaGL openal-soft mpg123
+          apt-get install -y python3-venv ffmpeg ninja-build git build-essential zlib1g-dev
+          vdpm install zlib taihen kubridge libmathneon vitaShaRK SceShaccCgExt vitaGL openal-soft mpg123 curl-mbedtls mbedtls zstd
           python3 -m venv .venv
           .venv/bin/python -m pip install -r tools/vita/requirements.txt
       - name: Build full intro release
         run: .venv/bin/python tools/vita/build.py --jobs 2
       - name: Validate every movie frame and malformed files
         run: .venv/bin/python tools/vita/check-software-movie.py
+      - name: Extract the complete VPK through the production updater
+        run: .venv/bin/python tools/vita/check-updater.py --vpk build/vita-intro/reLCS.vpk
       - uses: actions/upload-artifact@v4
         with:
           name: reLCS-PSVita-intro

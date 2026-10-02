@@ -57,13 +57,29 @@ def main():
     package = build/'reLCS.vpk'
     files = {'eboot.bin': build/('intro.bin' if args.intro else 'game.bin'),
              'sce_sys/param.sfo': build/'param.sfo',
+             'sce_sys/package/head.bin': build/'head.bin',
+             'licenses/vitashell.txt': ROOT/'vita/updater/licenses/vitashell.txt',
              'boot/loading.rgba.z': build/'loading.rgba.z'}
     for name in ['icon0.png', 'livearea/contents/bg.png', 'livearea/contents/startup.png',
                  'livearea/contents/template.xml']:
         files['sce_sys/'+name] = sce_sys/name
+    if not args.intro and args.title_id=='RELCS0001':
+        # Direct-launch test builds do not contain the helper or its Update tile.
+        files['sce_sys/livearea/contents/template.xml']=ROOT/'vita/updater/template.xml'
     if args.intro:
         files.update({'game.bin': build/'game.bin', 'boot/intro.vtm': build/'intro.vtm',
-                      'licenses/lz4.txt': ROOT/'vita/launcher/lz4/LICENSE'})
+                      'licenses/lz4.txt': ROOT/'vita/launcher/lz4/LICENSE',
+                      'sce_sys/livearea/contents/update.png': sce_sys/'livearea/contents/update.png',
+                      'updater/eboot.bin': build/'update.bin',
+                      'updater/certs/ca-bundle.pem': ROOT/'vita/updater/ca-bundle.pem',
+                      'updater/sce_sys/param.sfo': build/'helper.sfo',
+                      'updater/sce_sys/package/head.bin': build/'helper-head.bin',
+                      'updater/sce_sys/livearea/contents/template.xml': ROOT/'vita/updater/template.xml',
+                      'licenses/vitashell.txt': ROOT/'vita/updater/licenses/vitashell.txt'})
+        for name in ['icon0.png','livearea/contents/bg.png','livearea/contents/startup.png']:
+            files['updater/sce_sys/'+name]=sce_sys/name
+        for name in ['curl.txt','mbedtls.txt','zstd.txt','font.txt','vitashell.txt']:
+            files['updater/licenses/'+name]=ROOT/'vita/updater/licenses'/name
     for path in files.values():
         if not path.is_file():
             raise SystemExit(f'Missing build input: {path}')
@@ -91,7 +107,13 @@ def main():
                                   ('sce_sys/livearea/contents/bg.png', 840, 500),
                                   ('sce_sys/livearea/contents/startup.png', 280, 158)]:
             assert struct.unpack('>IIBBBBB', z.read(name)[16:29]) == (width,height,8,3,0,0,0)
+        unpacked_size=sum(info.file_size for info in z.infolist())
+        if args.intro:
+            helper=sfo_values(z.read('updater/sce_sys/param.sfo'))
+            assert helper['TITLE_ID']=='RLCUPD001' and helper['APP_VER']==args.version
+            assert b'psla:-update' in z.read('sce_sys/livearea/contents/template.xml')
     manifest = {'version': args.version, 'title_id': args.title_id, 'intro': args.intro,
+                'unpacked_bytes':unpacked_size, 'updater':args.intro,
                 'vpk_bytes': package.stat().st_size, 'vpk_sha256': file_digest(package),
                 'files_sha256': hashes}
     if args.intro:
@@ -101,6 +123,13 @@ def main():
         manifest['movie'] = {key: movie[key] for key in ['frames', 'duration_seconds', 'audio_samples',
                                                        'source_sha256', 'rgba_sha256', 'audio_sha256']}
     (build/'release.json').write_text(json.dumps(manifest, indent=2)+'\n', encoding='utf-8')
+    if args.intro:
+        update=('RELCS-UPDATE-1\n'
+                f'version={args.version}\nsize={manifest["vpk_bytes"]}\n'
+                f'unpacked_size={unpacked_size}\nsha256={manifest["vpk_sha256"]}\n'
+                'url=https://github.com/fauxrougee/GTALCS-psvita-port/releases/download/'
+                f'v{args.version}/reLCS-{args.version}-intro-complete.vpk\n')
+        (build/'update.txt').write_text(update,encoding='ascii',newline='\n')
     title = '' if args.title_id == 'RELCS0001' else f' {args.title_id}'
     print(f'PASS: {args.version}{title}, {"full intro + audio" if args.intro else "direct launch"}, '
           f'matching executables, assets, memory flag and ZIP CRCs; {package.stat().st_size} bytes')

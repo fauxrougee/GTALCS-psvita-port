@@ -47,10 +47,14 @@ constexpr unsigned SCE_KERNEL_CPU_MASK_USER_ALL=0x70000;
 constexpr int SCE_AUDIO_OUT_PORT_TYPE_MAIN=0,SCE_AUDIO_OUT_MODE_STEREO=1;
 constexpr int SCE_CTRL_MODE_DIGITAL=0,SCE_KERNEL_POWER_TICK_DEFAULT=0;
 constexpr unsigned SCE_CTRL_CROSS=0x4000,SCE_CTRL_START=8;
+constexpr unsigned SCE_CTRL_CIRCLE=0x2000;
 constexpr unsigned SCE_DISPLAY_SETBUF_IMMEDIATE=0,SCE_DISPLAY_SETBUF_NEXTFRAME=1;
 constexpr int SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW=1,SCE_DISPLAY_PIXELFORMAT_A8B8G8R8=0;
 struct SceCtrlData { unsigned buttons; };
 struct SceIoStat { uint64_t st_size; };
+struct SceAppUtilInitParam {};
+struct SceAppUtilBootParam {};
+struct SceAppUtilAppEventParam { int type=0; };
 struct SceDisplayFrameBuf { unsigned size; void *base; unsigned pitch,width,height,pixelformat; };
 static const auto epoch=std::chrono::steady_clock::now();
 static std::string scenario;
@@ -77,6 +81,17 @@ int sceCtrlPeekBufferPositive(int,SceCtrlData *p,int){
     if(scenario=="skip" && controllerReads>20) p->buttons=SCE_CTRL_START;
     if(scenario=="held-skip" && (controllerReads<12 || controllerReads>45)) p->buttons=SCE_CTRL_CROSS;
     return 1;
+}
+int sceAppUtilInit(SceAppUtilInitParam*,SceAppUtilBootParam*) { return 0; }
+int sceAppUtilShutdown() { return 0; }
+int sceAppUtilReceiveAppEvent(SceAppUtilAppEventParam *e) { e->type=scenario.find("update")==0?5:0; return 0; }
+int sceAppUtilAppEventParseLiveArea(SceAppUtilAppEventParam*,char *p) { strcpy(p,"-update"); return 0; }
+namespace Update {
+bool OpenScreen() { return true; }
+void CloseScreen() {}
+int StartHelper() { return scenario=="update-fail"?-123:0; }
+void Screen(const std::string&,const std::string&) {}
+unsigned Buttons() { return SCE_CTRL_CIRCLE; }
 }
 int sceAudioOutOpenPort(int type,int len,int rate,int mode){
     assert(type==0 && len==1920 && rate==48000 && mode==1);
@@ -162,13 +177,21 @@ int sceAppMgrLoadExec(const char *p,void*,void*){
     }
     return -99;
 }
-int sceKernelExitProcess(int result){ assert(result==-99); return 0; }
+int sceKernelExitProcess(int result){ assert(result==-99 || (scenario=="update"&&result==0) || (scenario=="update-fail"&&result==-123)); return 0; }
 '''
+core=(ROOT/'vita/updater/core.cpp').read_text()
+SOURCE+='namespace Update {\n'+core[core.index('bool LaunchUpdate('):core.index('bool SafePath(')]+'}\n'
 SOURCE+='\n'+stripped(LAUNCH/'movie.cpp')+'\n'
 SOURCE+=stripped(LAUNCH/'main.cpp').replace('int main()', 'int LauncherMain()')+'\n'
 SOURCE+=r'''
 int main(int argc,char **argv){
     assert(argc==2); scenario=argv[1];
+    if(scenario=="update" || scenario=="update-fail") {
+        assert(LauncherMain()==(scenario=="update"?0:-123));
+        assert(!gameLaunches && !audioBlocks && !displayPresentations && !nextThread);
+        puts("PASS: LiveArea update launches the helper without movie or game initialization");
+        return 0;
+    }
     // join-fail uses the same early skip as "skip", then simulates failed joins.
     if(scenario=="join-fail") {
         std::thread stopper([]{ std::this_thread::sleep_for(std::chrono::milliseconds(500)); failed.store(true); });
@@ -214,7 +237,7 @@ def main():
             shutil.copy2(args.media,media/'intro.vtm')
         cases=args.cases or ['full','skip','held-skip','audio-open','video-create','audio-create',
                          'video-start','audio-start','audio-output','display-alloc','display-present',
-                         'stall','join-fail']
+                         'stall','join-fail','update','update-fail']
         for scenario in cases:
             subprocess.run([str(exe),scenario],cwd=temp,env=env,check=True,timeout=180)
         (media/'intro.vtm').unlink()

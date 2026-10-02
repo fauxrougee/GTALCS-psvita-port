@@ -18,7 +18,7 @@ packages in `tools/vita/requirements.txt`, and [VitaSDK](https://vitasdk.org/).
 Install these target libraries with the official vdpm package manager:
 
 ```text
-zlib taihen kubridge libmathneon vitaShaRK SceShaccCgExt vitaGL openal-soft mpg123
+zlib taihen kubridge libmathneon vitaShaRK SceShaccCgExt vitaGL openal-soft mpg123 curl-mbedtls mbedtls zstd
 ```
 
 ## Native Windows
@@ -65,8 +65,8 @@ python tools/vita/build.py --benchmark
 python tools/vita/build.py --sdk /path/to/sdk --build-dir /path/to/build --output-dir /path/to/dist --jobs 4
 ```
 
-The full build writes `dist/reLCS-01.18-intro-complete.vpk`.
-`--no-intro` produces the smaller `dist/reLCS-01.18-sans-intro.vpk` for testing.
+The full build writes `dist/reLCS-01.19-intro-complete.vpk` and `dist/update.txt`.
+`--no-intro` produces the smaller `dist/reLCS-01.19-sans-intro.vpk` for testing.
 Both builds also export ELF files and checksums. Keep the ELF files matching
 the installed VPK when investigating a crash dump.
 

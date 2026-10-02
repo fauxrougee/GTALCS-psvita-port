@@ -14,5 +14,5 @@ if [[ ! -x "$VITASDK/bin/arm-vita-eabi-gcc" ]]; then
     fi
     bash "$ROOT/sdk/vdpm/bootstrap-vitasdk.sh"
 fi
-vdpm install zlib taihen kubridge libmathneon vitaShaRK SceShaccCgExt vitaGL openal-soft mpg123
+vdpm install zlib taihen kubridge libmathneon vitaShaRK SceShaccCgExt vitaGL openal-soft mpg123 curl-mbedtls mbedtls zstd
 printf 'VitaSDK ready at %s. Set VITASDK to this path when building.\n' "$VITASDK"

@@ -42,7 +42,7 @@ def main():
         print(f'{target}: {w}x{h}, indexed PNG, {len(data)} bytes')
     template = root/'sce_sys/livearea/contents/template.xml'
     tree = ET.parse(template)
-    tree.getroot().set('content-rev','2')
+    tree.getroot().set('content-rev','3' if (root/'sce_sys/livearea/contents/update.png').is_file() else '2')
     tree.write(template,encoding='utf-8',xml_declaration=True)
 
 if __name__ == '__main__':

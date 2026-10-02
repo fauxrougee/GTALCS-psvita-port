@@ -61,6 +61,11 @@ def main():
                if not (sdk/'arm-vita-eabi/lib'/('lib'+name+'.a')).is_file()]
     if missing:
         raise SystemExit('Missing VitaSDK target libraries: '+', '.join(missing)+'; see vita/README.md')
+    if intro:
+        missing=[name for name in ['curl','mbedtls','mbedx509','mbedcrypto','zstd']
+                 if not (sdk/'arm-vita-eabi/lib'/('lib'+name+'.a')).is_file()]
+        if missing:
+            raise SystemExit('Install updater dependencies: vdpm install curl-mbedtls mbedtls zstd')
     env = os.environ.copy()
     env['VITASDK'] = sdk.as_posix()
     env['PATH'] = str(sdk/'bin') + os.pathsep + env['PATH']
@@ -84,6 +89,8 @@ def main():
     outputs = {'reLCS.vpk': name+'.vpk', 'reLCS': name+'-game.elf', 'release.json': name+'.json'}
     if intro:
         outputs['relcs_intro'] = name+'-launcher.elf'
+        outputs['relcs_update'] = name+'-updater.elf'
+        outputs['update.txt'] = 'update.txt'
     sums = []
     for src, dst in outputs.items():
         target = args.output_dir/dst

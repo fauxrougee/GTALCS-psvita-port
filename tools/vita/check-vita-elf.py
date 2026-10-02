@@ -7,7 +7,7 @@ from elftools.elf.elffile import ELFFile
 build = Path(sys.argv[1])
 names = ['reLCS', 'reLCS.velf']
 if '--intro' in sys.argv[2:]:
-    names += ['relcs_intro', 'relcs_intro.velf']
+    names += ['relcs_intro', 'relcs_intro.velf', 'relcs_update', 'relcs_update.velf']
 for name in names:
     path=build/name
     with path.open('rb') as stream:

@@ -18,7 +18,7 @@ include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
 
 set(VITA_APP_NAME "GTA Liberty City Stories")
 set(VITA_TITLEID  "RELCS0001")
-set(VITA_VERSION  "01.18")
+set(VITA_VERSION  "01.19")
 set(VITA_DATA_DIR "ux0:data/reLCS/")
 option(VITA_DETAILED_GL_PROFILE "Time every GL draw/state call (adds CPU overhead)" OFF)
 
@@ -202,6 +202,7 @@ set(PACKAGE_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/game.bin"
 	"${CMAKE_CURRENT_BINARY_DIR}/loading.rgba.z")
 if(VITA_WITH_INTRO)
 	include("${CMAKE_CURRENT_SOURCE_DIR}/launcher/build.cmake")
+	include("${CMAKE_CURRENT_SOURCE_DIR}/updater/build.cmake")
 	list(APPEND PACKAGE_OPTIONS --intro)
 	list(APPEND PACKAGE_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/intro.bin"
 		"${CMAKE_CURRENT_BINARY_DIR}/intro.vtm" "${CMAKE_CURRENT_BINARY_DIR}/intro.json")
@@ -212,9 +213,12 @@ file(GLOB_RECURSE PACKAGE_ART CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${V
 add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/reLCS.vpk"
 	COMMAND "${VITA_MKSFOEX}" -d ATTRIBUTE2=12 -s "APP_VER=${VITA_VERSION}"
 		-s "TITLE_ID=${VITA_TITLEID}" "${VITA_APP_NAME}" "${CMAKE_CURRENT_BINARY_DIR}/param.sfo"
+	COMMAND "${Python3_EXECUTABLE}" "${ROOT}/tools/vita/make-update-head.py"
+		--sfo "${CMAKE_CURRENT_BINARY_DIR}/param.sfo" --output "${CMAKE_CURRENT_BINARY_DIR}/head.bin"
 	COMMAND "${Python3_EXECUTABLE}" "${ROOT}/tools/vita/package-release.py"
 		--build-dir "${CMAKE_CURRENT_BINARY_DIR}" --version "${VITA_VERSION}" ${PACKAGE_OPTIONS}
 	DEPENDS ${PACKAGE_DEPENDS} ${PACKAGE_ART} "${ROOT}/tools/vita/package-release.py"
+		"${ROOT}/tools/vita/make-update-head.py" updater/head-template.bin
 		"${CMAKE_CURRENT_SOURCE_DIR}/launcher/lz4/LICENSE"
 	VERBATIM)
 add_custom_target(vpk ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/reLCS.vpk")

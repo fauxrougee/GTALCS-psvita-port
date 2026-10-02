@@ -16,5 +16,17 @@
     "libpthread.a": "207c1848aaa3b0a47443299ed6aecc0196d3402de6c496013c5880bfe679325b",
     "libstdc++.a": "94818d61ebced52e20b308c9017a6b44d8f4398b19f0d586d510ce4b83cd86d5",
     "libc.a": "c7d82130310a81b16444715d6cd884f49bb92d2c8b0494634da90a2411b10d61"
+  },
+  "updater_target_library_sha256": {
+    "libcurl.a": "451c51dfabea870ff6d3fe514f38ed6a60e93171ef93d8ae6decc4c6b42efd45",
+    "libmbedtls.a": "c42ebbc340a57436638f6c08bb5f875a591ad4ebde83c60f3cca82b96039a10e",
+    "libmbedx509.a": "4a812ada5849736ed4f1043ebbac77c67c34131825744474f6f6a89b03404a9e",
+    "libmbedcrypto.a": "0d1d20762664444098226789d0c0d3096df4b38e6226b0d9e824cd5654c1da8c",
+    "libzstd.a": "64082091f985716e030f23c115de6111c95dab5f42413dc63b278031d53c73cc"
+  },
+  "updater_package_archives": {
+    "curl-mbedtls.tar.xz": "58c0ffe0d94bd6933e004a025ecea180e3a42af9671ed9ef2229998e97a0f702",
+    "mbedtls.tar.xz": "4a509e9b91e887e974cf58cf39541d121c0f7118d759732179881daa840c8031",
+    "zstd.tar.xz": "b459390f8f6b6f5c7657d32d2681c82206b636133c4d277916e43270e0eec00b"
   }
 }
