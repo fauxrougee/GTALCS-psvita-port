@@ -41,6 +41,11 @@
 #include "Stats.h"
 #include "CarCtrl.h"
 #include "TrafficLights.h"
+#ifdef PSP2
+#include "vita.h"
+#include "PadCheats.h"
+#include "Credits.h"
+#endif
 
 #ifdef GTA_PS2
 #include "eetypes.h"
@@ -1114,6 +1119,17 @@ void CPad::AddToCheatString(char c)
 	CheatString[0] = c;
 
 #define _CHEATCMP(str)	strncmp(str, CheatString, sizeof(str)-1)
+#ifdef PSP2
+	// LCS codes are entered forwards; the history stores the latest key first.
+#define LCS_CHEAT(code, effect) \
+	{ const char *keys = code; const size_t length = sizeof(code)-1; \
+	  bool match = length <= sizeof(CheatString); \
+	  for(size_t i=0; match && i<length; ++i) \
+		  match = CheatString[i] == keys[length-1-i]; \
+	  if(match) { effect; CheatString[0]=' '; return; } }
+#include "PadCheats.inc"
+#undef LCS_CHEAT
+#else
 	// "4414LDRULDRU"	-	R2 R2 L1 R2 LEFT DOWN RIGHT UP LEFT DOWN RIGHT UP
 	if ( !_CHEATCMP("URDLURDL4144") )
 		WeaponCheat1();
@@ -1201,6 +1217,7 @@ void CPad::AddToCheatString(char c)
 	// "3141L33T"		-	R1 L1 R2 L1 LEFT R1 R1 TRIANGLE
 	else if ( !_CHEATCMP("T33L1413") )
 		StrongGripCheat();
+#endif
 
 #undef _CHEATCMP
 }
@@ -2015,7 +2032,7 @@ void CPad::Update(int16 pad)
 
 void CPad::DoCheats(void)
 {
-#ifdef DETECT_PAD_INPUT_SWITCH
+#if defined(DETECT_PAD_INPUT_SWITCH) && !defined(PSP2)
 	if (IsAffectedByController)
 #endif
 		GetPad(0)->DoCheats(0);
@@ -2023,7 +2040,20 @@ void CPad::DoCheats(void)
 
 void CPad::DoCheats(int16 unk)
 {
-#ifdef GTA_PS2_STUFF
+#ifdef PSP2
+	static unsigned int previousButtons;
+	const unsigned int buttons = VitaGetCheatButtons();
+	const unsigned int pressed = buttons & ~previousButtons;
+	previousButtons = buttons;
+	const struct { unsigned int button; char key; } keys[] = {
+	    {PadCheats::Triangle,'T'}, {PadCheats::Circle,'C'},
+	    {PadCheats::Cross,'X'}, {PadCheats::Square,'S'},
+	    {PadCheats::Up,'U'}, {PadCheats::Down,'D'},
+	    {PadCheats::Left,'L'}, {PadCheats::Right,'R'},
+	    {PadCheats::L,'1'}, {PadCheats::R,'3'}};
+	for(const auto &key: keys)
+		if(pressed & key.button) AddToCheatString(key.key);
+#elif defined(GTA_PS2_STUFF)
 	if ( GetTriangleJustDown() )
 		AddToCheatString('T');
 

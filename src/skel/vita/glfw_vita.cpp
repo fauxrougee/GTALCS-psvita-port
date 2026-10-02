@@ -12,6 +12,7 @@
 #include "vita.h"
 #include "vita_loading.h"
 #include "vita_perf.h"
+#include "PadCheats.h"
 
 #define VITA_SCREEN_WIDTH  960
 #define VITA_SCREEN_HEIGHT 544
@@ -33,6 +34,7 @@ static int hintMinor = 0;
 static bool glInitialised;
 
 static GLFWgamepadstate padState;
+static unsigned int cheatButtons;
 static unsigned char joyButtons[GLFW_GAMEPAD_BUTTON_LAST + 1];
 static float joyAxes[GLFW_GAMEPAD_AXIS_LAST + 1];
 
@@ -78,6 +80,17 @@ UpdatePad(void)
 	ReadTouchHalves(SCE_TOUCH_PORT_FRONT, FRONT_TOUCH_WIDTH, &frontL, &frontR);
 
 	unsigned int b = ctrl.buttons;
+	// Cheats use the PSP layout and must not inherit action remapping or touch.
+	cheatButtons = 0;
+	const struct { unsigned int hardware, cheat; } masks[] = {
+	    {SCE_CTRL_TRIANGLE, PadCheats::Triangle}, {SCE_CTRL_CIRCLE, PadCheats::Circle},
+	    {SCE_CTRL_CROSS, PadCheats::Cross}, {SCE_CTRL_SQUARE, PadCheats::Square},
+	    {SCE_CTRL_UP, PadCheats::Up}, {SCE_CTRL_DOWN, PadCheats::Down},
+	    {SCE_CTRL_LEFT, PadCheats::Left}, {SCE_CTRL_RIGHT, PadCheats::Right},
+	    {SCE_CTRL_LTRIGGER | SCE_CTRL_L1, PadCheats::L},
+	    {SCE_CTRL_RTRIGGER | SCE_CTRL_R1, PadCheats::R}};
+	for(const auto &mask: masks)
+		if(b & mask.hardware) cheatButtons |= mask.cheat;
 	unsigned char *btn = padState.buttons;
 	btn[GLFW_GAMEPAD_BUTTON_A] = !!(b & SCE_CTRL_CROSS);
 	btn[GLFW_GAMEPAD_BUTTON_B] = !!(b & SCE_CTRL_CIRCLE);
@@ -107,6 +120,8 @@ UpdatePad(void)
 	memcpy(joyButtons, padState.buttons, sizeof(joyButtons));
 	memcpy(joyAxes, padState.axes, sizeof(joyAxes));
 }
+
+unsigned int VitaGetCheatButtons(void) { return cheatButtons; }
 
 extern "C" {
 

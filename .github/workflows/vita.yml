@@ -39,6 +39,7 @@ jobs:
           python3 tools/vita/check-updater.py
           python3 tools/vita/check-update-network.py
           python3 tools/vita/check-update-launch.py
+          python3 tools/vita/check-vita-cheats.py
       - name: Check the benchmark metrics and report tool
         run: |
           python3 tools/vita/check-bench-metrics.py

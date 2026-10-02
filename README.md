@@ -99,6 +99,10 @@ If an update fails, attach `ux0:data/reLCS/update.log`. The
 
 ## Troubleshooting
 
+For cheat codes, use the LCS PSP or PS2 combinations with **L/R** in place of
+**L1/R1**. See the [Vita cheat guide](docs/CHEATS.md) for examples and supported
+effects in the upcoming 01.19 build.
+
 <details>
 <summary><strong>The intro plays, but the game does not reach the menu</strong></summary>
 

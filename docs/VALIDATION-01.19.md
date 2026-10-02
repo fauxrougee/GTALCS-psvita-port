@@ -22,6 +22,13 @@ can mount the updated game again.
 
 ## Local checks
 
+- Vita cheat entry now uses physical button presses, independent of gameplay
+  bindings and controller/keyboard switching. The legacy GTA III pad table is
+  replaced on Vita by 32 LCS PSP/PS2 combinations for existing effect handlers.
+  Native ASan tests exercise all 32 dispatches, held/repeated buttons, L/R
+  alias deduplication, and incomplete, incorrect and reversed sequences.
+  These tests record handler calls; they do not execute gameplay effects.
+
 - Full native Windows VitaSDK build, including the unchanged movie/audio.
 - Game, launcher and updater ARM/Sony ELF load segments checked for overlap.
 - Complete VPK checked against its executable/resource inputs, ZIP CRCs,
@@ -60,6 +67,10 @@ can mount the updated game again.
    settings and game data after restarting the Vita.
 4. Exercise insufficient space, offline operation and failed installation.
    Preserve `ux0:data/reLCS/update.log` for failures.
+5. During gameplay, enter health, money, all three weapon sets and Rhino codes
+   from [the cheat guide](CHEATS.md). Repeat on foot and in a vehicle, including
+   custom gameplay bindings. Confirm HUD feedback, gameplay effects and stable
+   weapon/vehicle streaming. Check the remaining mapped effects separately.
 
 Publishing the new VPK alone does not activate in-console updates. The
 matching `update.txt` must be an asset of the same tested public **latest**

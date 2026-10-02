@@ -64,12 +64,13 @@ Upload VPKs to GitHub Releases. Keep `assets/`, `sdk/`, `build/`, `dist/`, and `
 
 ## LiveArea updater
 
-The complete 01.19 build includes the independent updater. Run these native
+The complete 01.19 build includes the internal updater. Run these native
 host checks before testing installation on a console:
 
 ```sh
 python tools/vita/check-updater.py
 python tools/vita/check-update-network.py
+python tools/vita/check-update-launch.py
 python tools/vita/check-updater.py --vpk dist/reLCS-01.19-intro-complete.vpk
 python tools/vita/check-software-playback.py update update-fail skip
 ```
@@ -79,6 +80,17 @@ checkout. Git for Windows supplies the host zlib/curl DLLs. The network test
 uses controlled responses by default; `--online` additionally checks real
 GitHub HTTPS redirects and CA rejection on the host. It does not emulate the
 Vita TLS runtime or system installer.
+
+## Vita cheat input
+
+```sh
+python tools/vita/check-vita-controls.py
+python tools/vita/check-vita-cheats.py
+```
+
+The second check runs production hardware translation, button-edge detection
+and the LCS sequence table. Effect handlers are stubs that record dispatches;
+weapon streaming and other gameplay effects require a physical-console test.
 
 After a successful console test, prepare the three release assets with
 `python tools/vita/prepare-update-release.py dist/reLCS-01.19-intro-complete.vpk`.

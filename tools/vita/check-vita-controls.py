@@ -38,6 +38,7 @@ using wchar=char16_t; using RsKeyCodes=int;
 int Min(int a,int b) { return a<b?a:b; }
 #include "GLFW/glfw3.h"
 #include "ControllerConfig.h"
+#include "PadCheats.h"
 // PRODUCTION_CONTROLLER_STATE
 class CPad {
 public:
@@ -73,6 +74,7 @@ int sceTouchPeek(SceTouchPortType,SceTouchData *p,int) { p->reportNum=0; return 
 #define FRONT_TOUCH_WIDTH 1920
 #define REAR_TOUCH_WIDTH 1920
 GLFWgamepadstate padState={};
+unsigned int cheatButtons;
 unsigned char joyButtons[GLFW_GAMEPAD_BUTTON_LAST+1];
 float joyAxes[GLFW_GAMEPAD_AXIS_LAST+1];
 '''
